@@ -43,6 +43,7 @@ Instalar e verificar Node.js, Python, extensões do VS Code e criar estrutura in
 - VS Code: já instalado
 - Pinokio: já instalado
 - Pasta do projeto criada em: /c/Users/acxell PC/project-argus
+- Git inicializado com sucesso (commit 79e571f)
 
 ### ❌ Erros encontrados
 
@@ -60,7 +61,51 @@ Instalar e verificar Node.js, Python, extensões do VS Code e criar estrutura in
 
 ### ➡️ Próximo passo
 
-Sessão 01 — Passo 6: Iniciar Git na pasta do projeto.
+Sessão 02 — Criar repositório no GitHub e conectar o projeto.
+
+---
+
+## 📅 05/10/2026 — SESSÃO 02: Conexão com o GitHub
+
+### 🎯 Objetivo
+
+Criar repositório remoto no GitHub e conectar o projeto local.
+
+### 🛠️ Ferramentas usadas
+
+- Git Bash
+- GitHub
+- VS Code
+
+### ✅ O que funcionou
+
+- Repositório criado: https://github.com/vnzzlv/project-argus
+- Remote `origin` configurado
+- Branch renomeada de `master` para `main`
+- Primeiro push realizado com sucesso
+- URL pública (privada por enquanto): vnzzlv/projeto-argus
+
+### ❌ Erros encontrados
+
+| Erro                                       | Causa                                                                       | Solução                                               |
+| ------------------------------------------ | --------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `User canceled device code authentication` | Janela de autenticação foi cancelada                                        | Refazer o `git push`                                  |
+| `Password authentication is not supported` | GitHub aboliu senha comum desde 2021                                        | Usar OAuth pelo navegador (que abriu automaticamente) |
+| `unable to read askpass response`          | Git Bash não conseguiu abrir a janela de autenticação na primeira tentativa | Refazer o `git push`                                  |
+
+### 💡 Aprendizado do dia
+
+- GitHub só aceita Personal Access Token (PAT) ou OAuth pelo navegador.
+- Quando der erro de autenticação, tentar o comando de novo costuma resolver.
+- Sempre completar a autorização no navegador quando a janela abrir.
+
+### ➡️ Próximo passo
+
+Sessão 03 — Criar estrutura de pastas do projeto (backend + frontend).
+
+### ⏱️ Tempo gasto
+
+- [21 minutos]
 
 ### ⏱️ Tempo gasto
 
