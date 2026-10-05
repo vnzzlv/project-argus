@@ -125,7 +125,54 @@ Criar estrutura base do projeto e README oficial.
 
 ### ➡️ Próximo passo
 
-Sessão 04 — Inicializar o backend Python (FastAPI) com ambiente virtual.
+## Sessão 04 — Inicializar o backend Python (FastAPI) com ambiente virtual.
+
+## 📅 05/10/2026 — SESSÃO 04: Backend Python (FastAPI)
+
+### 🎯 Objetivo
+
+Inicializar o backend Python com FastAPI e ambiente virtual isolado.
+
+### 🛠️ Ferramentas usadas
+
+- Git Bash
+- VS Code
+- Python 3.14
+- FastAPI 0.142.2
+- Uvicorn 0.54.0
+
+### ✅ O que funcionou
+
+- Ambiente virtual criado em `backend/venv/`
+- FastAPI + Uvicorn instalados (19 pacotes no total)
+- `requirements.txt` gerado com todas as versões travadas
+- Arquivo `main.py` criado com 2 endpoints (`/` e `/health`)
+- Servidor rodou em `http://127.0.0.1:8000`
+- Endpoint `/` retornou JSON de identificação do ARGUS
+- Swagger UI funcionando em `http://127.0.0.1:8000/docs`
+
+### ❌ Erros encontrados
+
+| Erro                                 | Causa                                        | Solução                                                         |
+| ------------------------------------ | -------------------------------------------- | --------------------------------------------------------------- |
+| (nenhum erro técnico nesta sessão)   | —                                            | —                                                               |
+| Log `GET /favicon.ico 404 Not Found` | Navegador busca ícone de aba automaticamente | Normal — será resolvido quando adicionarmos o logo SVG do ARGUS |
+
+### 💡 Aprendizado do dia
+
+- Ambiente virtual (`venv`) isola as dependências do projeto, evitando conflitos com o Python do sistema.
+- FastAPI gera documentação Swagger automaticamente (`/docs`), recurso valioso para demonstrar a API no TCC.
+- `pip freeze > requirements.txt` garante reprodutibilidade do ambiente — ponto importante para banca avaliadora.
+- Python 3.14 roda perfeitamente com FastAPI 0.142.2.
+
+### ➡️ Próximo passo
+
+Sessão 05 — Primeiro coletor de dados: voos em tempo real via OpenSky Network.
+
+### ⏱️ Tempo gasto
+
+- Estimado: 20–30 min
+- Real: [55 min]
 
 ### ⏱️ Tempo gasto
 
