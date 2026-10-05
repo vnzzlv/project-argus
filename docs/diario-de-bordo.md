@@ -103,10 +103,30 @@ Criar repositório remoto no GitHub e conectar o projeto local.
 
 Sessão 03 — Criar estrutura de pastas do projeto (backend + frontend).
 
+---
+
+## 📅 05/10/2026 — SESSÃO 03: Estrutura de Pastas + README
+
+### 🎯 Objetivo
+
+Criar estrutura base do projeto e README oficial.
+
+### ✅ O que funcionou
+
+- Pastas criadas: backend/, frontend/, brand/
+- README.md criado com identidade visual do ARGUS
+- Badges com cor ARGUS AMBER (#FFB020)
+- Commit 469ab47 enviado ao GitHub
+
+### 💡 Aprendizado do dia
+
+- Git não rastreia pastas vazias — só arquivos. As pastas backend/, frontend/ e brand/ só aparecerão no GitHub quando tiverem arquivos dentro.
+- README é a "capa" do projeto: primeira impressão para qualquer avaliador.
+
+### ➡️ Próximo passo
+
+Sessão 04 — Inicializar o backend Python (FastAPI) com ambiente virtual.
+
 ### ⏱️ Tempo gasto
 
-- [ preencher]
-
-### ⏱️ Tempo gasto
-
-- [preencher no final]
+- [preencher]
