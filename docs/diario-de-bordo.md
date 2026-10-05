@@ -105,7 +105,7 @@ Sessão 03 — Criar estrutura de pastas do projeto (backend + frontend).
 
 ### ⏱️ Tempo gasto
 
-- [21 minutos]
+- [ preencher]
 
 ### ⏱️ Tempo gasto
 
