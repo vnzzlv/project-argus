@@ -1,0 +1,22 @@
+# Dependências
+node_modules/
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Ambiente
+.env
+.env.local
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Builds
+dist/
+build/
