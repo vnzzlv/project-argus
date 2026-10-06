@@ -34,21 +34,21 @@ Todo o código é versionado via **Git** e hospedado no **GitHub**, com commits 
 
 ## 3. Cronograma de Sessões
 
-| Sessão | Data       | Objetivo                                | Status       | Tempo Estimado | Tempo Real |
-| ------ | ---------- | --------------------------------------- | ------------ | -------------- | ---------- |
-| 00     | 05/10/2026 | Planejamento e identidade visual        | ✅ Concluída | —              | —          |
-| 01     | 05/10/2026 | Instalação do ambiente                  | ✅ Concluída | 40–60 min      | ~90 min    |
-| 02     | 05/10/2026 | Conexão com GitHub                      | ✅ Concluída | 15–20 min      | ~30 min    |
-| 03     | 05/10/2026 | Estrutura de pastas + README            | ✅ Concluída | 15 min         | ~20 min    |
-| 04     | 05/10/2026 | Backend Python (FastAPI)                | ✅ Concluída | 20–30 min      | ~25 min    |
-| 05     | 05/10/2026 | Coletor de voos (OpenSky)               | ✅ Concluída | 30–45 min      | 19 min     |
-| 06     | —          | Coletor de satélites (N2YO / Celestrak) | 🔜 Planejada | —              | —          |
-| 07     | —          | Coletor de terremotos (USGS)            | 🔜 Planejada | —              | —          |
-| 08     | —          | Frontend inicial (React + MapLibre)     | 🔜 Planejada | —              | —          |
-| 09     | —          | Camadas visuais + HUD estilo ARGUS      | 🔜 Planejada | —              | —          |
-| 10     | —          | Motor de alertas de anomalias           | 🔜 Planejada | —              | —          |
-| 11     | —          | Empacotamento via Pinokio               | 🔜 Planejada | —              | —          |
-| 12     | —          | Documentação final e vídeo demo         | 🔜 Planejada | —              | —          |
+| Sessão | Data       | Objetivo                                    | Status       | Tempo Estimado | Tempo Real |
+| ------ | ---------- | ------------------------------------------- | ------------ | -------------- | ---------- | --- | --- |
+| 00     | 05/10/2026 | Planejamento e identidade visual            | ✅ Concluída | —              | —          |
+| 01     | 05/10/2026 | Instalação do ambiente                      | ✅ Concluída | 40–60 min      | ~90 min    |
+| 02     | 05/10/2026 | Conexão com GitHub                          | ✅ Concluída | 15–20 min      | ~30 min    |
+| 03     | 05/10/2026 | Estrutura de pastas + README                | ✅ Concluída | 15 min         | ~20 min    |
+| 04     | 05/10/2026 | Backend Python (FastAPI)                    | ✅ Concluída | 20–30 min      | ~25 min    |
+| 05     | 05/10/2026 | Coletor de voos (OpenSky)                   | ✅ Concluída | 30–45 min      | 19 min     |
+| 06     | 06/10/2026 | Coletor de satélites (Celestrak + Skyfield) | ✅ Concluída | 40–55 min      | 7 min      | —   | —   |
+| 07     | —          | Coletor de terremotos (USGS)                | 🔜 Planejada | —              | —          |
+| 08     | —          | Frontend inicial (React + MapLibre)         | 🔜 Planejada | —              | —          |
+| 09     | —          | Camadas visuais + HUD estilo ARGUS          | 🔜 Planejada | —              | —          |
+| 10     | —          | Motor de alertas de anomalias               | 🔜 Planejada | —              | —          |
+| 11     | —          | Empacotamento via Pinokio                   | 🔜 Planejada | —              | —          |
+| 12     | —          | Documentação final e vídeo demo             | 🔜 Planejada | —              | —          |
 
 ---
 
@@ -81,6 +81,10 @@ Todo o código é versionado via **Git** e hospedado no **GitHub**, com commits 
 - **httpx 0.28.1** — cliente HTTP assíncrono
 - **httpcore 1.0.9** — núcleo HTTP
 - **certifi 2026.7.22** — certificados SSL
+- **Skyfield 1.55** — cálculo orbital (SGP4)
+- **NumPy 2.5.3** — computação numérica
+- **sgp4 2.27** — propagação orbital (padrão NORAD)
+- **jplephem 2.24** — efemérides planetárias
 
 ### Frontend (a implementar)
 
@@ -154,7 +158,7 @@ O parâmetro `bbox` (bounding box) permite filtrar dados por área geográfica, 
 ## 9. Próximas Etapas
 
 - ✅ Sessão 05: Coletor de voos em tempo real (OpenSky Network)
-- 🔜 Sessão 06: Coletor de satélites (N2YO / Celestrak)
+- ✅ Sessão 06: Coletor de satélites (Celestrak + Skyfield)
 - 🔜 Sessão 07: Coletor de terremotos (USGS)
 - 🔜 Sessão 08: Frontend inicial (dashboard React + MapLibre)
 - 🔜 Sessão 09: Camadas visuais + HUD estilo ARGUS

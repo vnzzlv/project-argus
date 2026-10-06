@@ -231,6 +231,66 @@ Sessão 06 — Coletor de satélites (N2YO / Celestrak).
 - Endpoints criados: 1 (/flights)
 - Fontes de dados integradas: 1 (OpenSky Network)
 
+---
+
+## 📅 06/10/2026 — SESSÃO 06: Coletor de Satélites (Celestrak + Skyfield)
+
+### ⏱️ Cronologia
+
+- **Início:** 16:55
+- **Fim:** 17:25
+- **Duração real:** 30 minutos
+- **Estimativa:** 40–55 minutos
+- **Status:** ✅ Muito abaixo da estimativa
+
+### 🎯 Objetivo
+
+Implementar o segundo coletor de dados reais do ARGUS: satélites em tempo real.
+
+### 🛠️ Ferramentas usadas
+
+- FastAPI
+- httpx
+- Skyfield 1.55
+- NumPy 2.5.3
+- sgp4 2.27
+- Celestrak (fonte de dados TLE)
+
+### ✅ O que funcionou
+
+- Biblioteca Skyfield instalada (com NumPy e SGP4)
+- Coletor collectors/satellites.py implementado
+- Endpoint /satellites funcionando
+- Cálculo orbital local (SGP4) — não depende de API de terceiros para posições
+- Testes bem-sucedidos:
+  - Estações: 20 disponíveis / 5 retornadas (ISS ZARYA, CSS TIANHE, NAUKA, POISK)
+  - Starlink: 10.670 disponíveis / 10 retornadas
+  - Swagger atualizado com o novo endpoint
+
+### ❌ Erros encontrados
+
+| Erro                  | Causa | Solução |
+| --------------------- | ----- | ------- |
+| (nenhum erro técnico) | —     | —       |
+
+### 💡 Aprendizado do dia
+
+- Celestrak fornece dados TLE (Two-Line Elements) de forma gratuita, sem cadastro.
+- Skyfield calcula as posições orbitais localmente usando o algoritmo SGP4 (padrão NORAD).
+- Isso demonstra domínio técnico superior: não apenas consumimos API, calculamos órbitas.
+- A primeira requisição demora mais porque baixa o arquivo de efemérides (~17 MB), mas depois fica em cache.
+
+### ➡️ Próximo passo
+
+Sessão 07 — Coletor de terremotos (USGS).
+
+### 📊 Estatísticas da sessão
+
+- Linhas de código adicionadas: ~90 (satellites.py) + ~30 (main.py)
+- Endpoints criados: 1 (/satellites)
+- Fontes de dados integradas: 2 (Celestrak + cálculo Skyfield)
+- Satélites rastreados: 10.690+ (20 estações + 10.670 Starlink)
+
 ### ⏱️ Tempo gasto ao decorrer de todo o projeto
 
 - [preencher]

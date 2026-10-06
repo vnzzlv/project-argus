@@ -9,11 +9,15 @@ httpcore==1.0.9
 httptools==0.8.0
 httpx==0.28.1
 idna==3.20
+jplephem==2.24
+numpy==2.5.3
 opentelemetry-api==1.45.0
 pydantic==2.13.5
 pydantic_core==2.46.5
 python-dotenv==1.2.4
 PyYAML==6.0.3
+sgp4==2.27
+skyfield==1.55
 starlette==1.7.0
 typing-inspection==0.4.4
 typing_extensions==4.16.0
