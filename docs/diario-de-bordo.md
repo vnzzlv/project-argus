@@ -169,11 +169,68 @@ Inicializar o backend Python com FastAPI e ambiente virtual isolado.
 
 Sessão 05 — Primeiro coletor de dados: voos em tempo real via OpenSky Network.
 
-### ⏱️ Tempo gasto
+---
 
-- Estimado: 20–30 min
-- Real: [55 min]
+## 📅 05/10/2026 — SESSÃO 05: Coletor de Voos (OpenSky Network)
 
-### ⏱️ Tempo gasto
+### ⏱️ Cronologia
+
+- **Pausa anterior (Sessão 04):** 16:36
+- **Retomada (Sessão 05):** 21:36
+- **Fim da Sessão 05:** 21:55
+- **Duração real:** 19 minutos
+- **Estimativa:** 30–45 minutos
+- **Status:** ✅ Abaixo da estimativa
+
+### 🎯 Objetivo
+
+Implementar o primeiro coletor de dados reais do ARGUS: voos em tempo real.
+
+### 🛠️ Ferramentas usadas
+
+- FastAPI 0.142.2
+- httpx 0.28.1
+- OpenSky Network API (https://opensky-network.org)
+
+### ✅ O que funcionou
+
+- Biblioteca httpx instalada (0.28.1)
+- Pasta collectors/ criada com **init**.py
+- Coletor collectors/flights.py implementado
+- Endpoint /flights funcionando globalmente
+- Filtro por Brasil (bbox) funcionando
+- Swagger UI atualizado automaticamente
+- Testes bem-sucedidos:
+  - Global: 8.664 aeronaves rastreadas / 5 retornadas
+  - Brasil: 192 aeronaves rastreadas / 10 retornadas
+  - Exemplos reais capturados: UAL2281 (United), TAM3674 (LATAM), GLO1295 (GOL), PSA Airlines
+
+### ❌ Erros encontrados
+
+| Erro                                                            | Causa                                       | Solução                |
+| --------------------------------------------------------------- | ------------------------------------------- | ---------------------- |
+| (nenhum erro técnico)                                           | —                                           | —                      |
+| Log `GET /favicon.ico 404`                                      | Navegador busca ícone automaticamente       | Comportamento esperado |
+| Log `GET /.well-known/appspecific/com.chrome.devtools.json 404` | Chrome DevTools procurando arquivo de debug | Inofensivo, ignorar    |
+
+### 💡 Aprendizado do dia
+
+- OpenSky Network é uma API pública, gratuita e sem autenticação — excelente fonte OSINT para TCCs.
+- A API tem limite de requisições por hora sem autenticação; em produção, considerar cadastro gratuito.
+- httpx é o equivalente assíncrono do requests, ideal para FastAPI.
+- O parâmetro bbox permite filtro geográfico eficiente (usado para focar no Brasil).
+- Uvicorn com --reload reinicia o servidor automaticamente ao salvar arquivos.
+
+### ➡️ Próximo passo
+
+Sessão 06 — Coletor de satélites (N2YO / Celestrak).
+
+### 📊 Estatísticas da sessão
+
+- Linhas de código adicionadas: ~75 (flights.py) + ~50 (main.py atualizado)
+- Endpoints criados: 1 (/flights)
+- Fontes de dados integradas: 1 (OpenSky Network)
+
+### ⏱️ Tempo gasto ao decorrer de todo o projeto
 
 - [preencher]
