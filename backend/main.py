@@ -9,6 +9,7 @@ from fastapi import FastAPI, Query, HTTPException
 from datetime import datetime, timezone
 from collectors.flights import fetch_flights
 from collectors.satellites import fetch_satellites, GRUPOS
+from collectors.earthquakes import fetch_earthquakes, PERIODOS, MAGNITUDES
 
 app = FastAPI(
     title="PROJECT ARGUS API",
@@ -69,5 +70,22 @@ async def satellites(
         raise HTTPException(status_code=400, detail=str(e))
     except httpx.HTTPStatusError as e:
         raise HTTPException(status_code=502, detail=f"Erro Celestrak: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro interno: {e}")
+
+
+@app.get("/earthquakes")
+async def earthquakes(
+    periodo: str = Query("dia", description=f"Períodos: {list(PERIODOS.keys())}"),
+    magnitude: str = Query("m25", description=f"Magnitudes: {list(MAGNITUDES.keys())}"),
+    limit: int = Query(50, ge=1, le=500, description="Número máximo de terremotos"),
+):
+    """Retorna terremotos recentes da USGS."""
+    try:
+        return await fetch_earthquakes(periodo=periodo, magnitude=magnitude, limit=limit)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=502, detail=f"Erro USGS: {e}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro interno: {e}")

@@ -143,15 +143,15 @@ O parâmetro `bbox` (bounding box) permite filtrar dados por área geográfica, 
 
 ## 8. Estatísticas do Projeto
 
-| Métrica                       | Valor                          |
-| ----------------------------- | ------------------------------ |
-| Total de sessões concluídas   | 6 (00 a 05)                    |
-| Total de commits no GitHub    | 5                              |
-| Total de arquivos versionados | 6                              |
-| Fontes de dados integradas    | 1 (OpenSky Network)            |
-| Endpoints da API              | 3 (`/`, `/health`, `/flights`) |
-| Aeronaves rastreadas (global) | ~8.664                         |
-| Aeronaves sobre o Brasil      | ~192                           |
+| Métrica                             | Valor                                                         |
+| ----------------------------------- | ------------------------------------------------------------- |
+| Total de sessões concluídas         | 8 (00 a 07)                                                   |
+| Total de commits no GitHub          | 8                                                             |
+| Fontes de dados integradas          | 3 (OpenSky, Celestrak+Skyfield, USGS)                         |
+| Endpoints da API                    | 5 (`/`, `/health`, `/flights`, `/satellites`, `/earthquakes`) |
+| Aeronaves rastreadas (global)       | ~8.664                                                        |
+| Satélites rastreados                | ~10.690                                                       |
+| Terremotos disponíveis (M2.5+, 24h) | ~40                                                           |
 
 ---
 
@@ -159,7 +159,6 @@ O parâmetro `bbox` (bounding box) permite filtrar dados por área geográfica, 
 
 - ✅ Sessão 05: Coletor de voos em tempo real (OpenSky Network)
 - ✅ Sessão 06: Coletor de satélites (Celestrak + Skyfield)
-- 🔜 Sessão 07: Coletor de terremotos (USGS)
 - 🔜 Sessão 08: Frontend inicial (dashboard React + MapLibre)
 - 🔜 Sessão 09: Camadas visuais + HUD estilo ARGUS
 - 🔜 Sessão 10: Motor de alertas de anomalias

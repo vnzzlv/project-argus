@@ -282,7 +282,55 @@ Implementar o segundo coletor de dados reais do ARGUS: satélites em tempo real.
 
 ### ➡️ Próximo passo
 
-Sessão 07 — Coletor de terremotos (USGS).
+## Sessão 07 — Coletor de terremotos (USGS).
+
+## 📅 06/10/2026 — SESSÃO 07: Coletor de Terremotos (USGS)
+
+### ⏱️ Cronologia
+
+- **Início:** 17:25
+- **Fim:** 17:40
+- **Duração real:** 15 minutos
+- **Estimativa:** 20–30 minutos
+- **Status:** ✅ Abaixo da estimativa
+
+### 🎯 Objetivo
+
+Implementar o terceiro coletor de dados reais do ARGUS: terremotos globais.
+
+### 🛠️ Ferramentas usadas
+
+- FastAPI
+- httpx
+- USGS Earthquake Hazards Program (https://earthquake.usgs.gov)
+
+### ✅ O que funcionou
+
+- Coletor collectors/earthquakes.py implementado
+- Endpoint /earthquakes funcionando
+- Filtros por período (hora/dia/semana/mês) e magnitude funcionando
+- Testes bem-sucedidos:
+  - Significativos 24h: 1 evento (M5.5 Ilhas Aleutas)
+  - M2.5+ 24h: 40 disponíveis / 20 retornados
+  - M4.5+ 7 dias: 116 disponíveis / 15 retornados
+  - Eventos globais: Alasca, Havaí, Fiji, Rússia, Indonésia, Chile, Papua Nova Guiné, Irã, Tonga
+- Swagger agora com 5 endpoints
+
+### ❌ Erros encontrados
+
+| Erro                  | Causa | Solução |
+| --------------------- | ----- | ------- |
+| (nenhum erro técnico) | —     | —       |
+
+### 💡 Aprendizado do dia
+
+- A USGS é a fonte oficial global de dados sísmicos — usar essa fonte no TCC dá credibilidade.
+- A API da USGS não exige autenticação e não tem limite de requisições.
+- 3º coletor implementado com sucesso — o padrão de arquitetura (collectors + endpoints) está se mostrando escalável.
+
+### ➡️ Próximo passo
+
+Sessão 08 — Coletor de câmeras públicas (Windy Webcams) OU início do frontend.
 
 ### 📊 Estatísticas da sessão
 
