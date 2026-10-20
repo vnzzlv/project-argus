@@ -342,3 +342,5 @@ Sessão 08 — Coletor de câmeras públicas (Windy Webcams) OU início do front
 ### ⏱️ Tempo gasto ao decorrer de todo o projeto
 
 - [preencher]
+
+Testando sincronização no PC da escola.
