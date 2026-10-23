@@ -6,7 +6,7 @@
 **Autor:** Acxell Viana Pinto
 **Início do desenvolvimento:** 05/10/2026
 **Repositório:** https://github.com/vnzzlv/project-argus
-**Stack principal:** Python 3.14 + FastAPI + React (futuro)
+**Stack principal:** Python + FastAPI + React + CesiumJS (3D)
 
 ---
 
@@ -14,7 +14,7 @@
 
 Este documento registra o processo de desenvolvimento do PROJECT ARGUS, incluindo decisões técnicas, erros encontrados e soluções aplicadas. Serve como base para o capítulo de Metodologia e Implementação do Trabalho de Conclusão de Curso.
 
-O ARGUS é um sistema de Inteligência de Fontes Abertas (OSINT) para visualização global em tempo real, agregando dados públicos de aviação, satélites, câmeras, navios, cabos submarinos, terremotos e outras fontes.
+O ARGUS é um sistema de Inteligência de Fontes Abertas (OSINT) para visualização global em tempo real, agregando dados públicos de aviação, satélites, terremotos e outras fontes em um dashboard 3D imersivo.
 
 ---
 
@@ -28,44 +28,49 @@ O desenvolvimento segue um modelo **iterativo-incremental**, dividido em sessõe
 - Aprendizados
 - Tempo gasto (estimado vs. real)
 
-Todo o código é versionado via **Git** e hospedado no **GitHub**, com commits descritivos seguindo o padrão _Conventional Commits_ (feat, fix, docs, chore).
+Todo o código é versionado via **Git** e hospedado no **GitHub**, com commits descritivos. Para garantir a sincronização contínua entre o PC de casa e o PC da escola, foi criado um atalho personalizado no Git (`git sync`), que automatiza o `pull`, `add`, `commit` e `push`.
 
 ---
 
 ## 3. Cronograma de Sessões
 
-| Sessão | Data       | Objetivo                                    | Status       | Tempo Estimado | Tempo Real |
-| ------ | ---------- | ------------------------------------------- | ------------ | -------------- | ---------- | --- | --- |
-| 00     | 05/10/2026 | Planejamento e identidade visual            | ✅ Concluída | —              | —          |
-| 01     | 05/10/2026 | Instalação do ambiente                      | ✅ Concluída | 40–60 min      | ~90 min    |
-| 02     | 05/10/2026 | Conexão com GitHub                          | ✅ Concluída | 15–20 min      | ~30 min    |
-| 03     | 05/10/2026 | Estrutura de pastas + README                | ✅ Concluída | 15 min         | ~20 min    |
-| 04     | 05/10/2026 | Backend Python (FastAPI)                    | ✅ Concluída | 20–30 min      | ~25 min    |
-| 05     | 05/10/2026 | Coletor de voos (OpenSky)                   | ✅ Concluída | 30–45 min      | 19 min     |
-| 06     | 06/10/2026 | Coletor de satélites (Celestrak + Skyfield) | ✅ Concluída | 40–55 min      | 7 min      | —   | —   |
-| 07     | —          | Coletor de terremotos (USGS)                | 🔜 Planejada | —              | —          |
-| 08     | —          | Frontend inicial (React + MapLibre)         | 🔜 Planejada | —              | —          |
-| 09     | —          | Camadas visuais + HUD estilo ARGUS          | 🔜 Planejada | —              | —          |
-| 10     | —          | Motor de alertas de anomalias               | 🔜 Planejada | —              | —          |
-| 11     | —          | Empacotamento via Pinokio                   | 🔜 Planejada | —              | —          |
-| 12     | —          | Documentação final e vídeo demo             | 🔜 Planejada | —              | —          |
+| Sessão | Data       | Objetivo                                       | Status       | Tempo Estimado | Tempo Real |
+| ------ | ---------- | ---------------------------------------------- | ------------ | -------------- | ---------- |
+| 00     | 05/10/2026 | Planejamento e identidade visual               | ✅ Concluída | —              | —          |
+| 01     | 05/10/2026 | Instalação do ambiente                         | ✅ Concluída | 40–60 min      | ~90 min    |
+| 02     | 05/10/2026 | Conexão com GitHub                             | ✅ Concluída | 15–20 min      | ~30 min    |
+| 03     | 05/10/2026 | Estrutura de pastas + README                   | ✅ Concluída | 15 min         | ~20 min    |
+| 04     | 05/10/2026 | Backend Python (FastAPI)                       | ✅ Concluída | 20–30 min      | ~25 min    |
+| 05     | 05/10/2026 | Coletor de voos (OpenSky)                      | ✅ Concluída | 30–45 min      | 19 min     |
+| 06     | 06/10/2026 | Coletor de satélites (Celestrak + Skyfield)    | ✅ Concluída | 40–55 min      | 7 min      |
+| 07     | 06/10/2026 | Coletor de terremotos (USGS)                   | ✅ Concluída | 20–30 min      | ~10 min    |
+| 08     | 06/10/2026 | Frontend 2D (React + MapLibre)                 | ✅ Concluída | 45–60 min      | ~50 min    |
+| 08.1   | 20/10/2026 | Setup do Frontend 3D (CesiumJS)                | ✅ Concluída | 30 min         | ~20 min    |
+| 08.2   | 20/10/2026 | Mapas realistas e labels (ESRI)                | ✅ Concluída | 20 min         | ~15 min    |
+| 08.3   | 21/10/2026 | Resolução de ambiente no PC da escola (uv)     | ✅ Concluída | 40 min         | ~60 min    |
+| 08.4   | 21/10/2026 | Contorno de bloqueio de porta (WinError 10013) | ✅ Concluída | 10 min         | ~5 min     |
+| 08.5   | 23/10/2026 | Voos em tempo real no globo 3D                 | ✅ Concluída | 40 min         | ~30 min    |
+| 08.6   | 23/10/2026 | Origem, Destino e Companhia (adsbdb)           | ✅ Concluída | 40 min         | ~25 min    |
+| 08.7   | 23/10/2026 | Cores por Companhia e Popups                   | ✅ Concluída | 20 min         | ~15 min    |
+| 08.8   | 23/10/2026 | Modelos 3D e Rastro Atrás do Avião             | ✅ Concluída | 30 min         | ~20 min    |
+| 08.8.1 | 23/10/2026 | Correção da Rotação do Modelo 3D (Eixo X)      | ✅ Concluída | 10 min         | ~5 min     |
 
 ---
 
-## 4. Registro Detalhado de Erros
+## 4. Registro Detalhado de Erros e Soluções
 
-| #   | Sessão | Erro                                                        | Causa                                                           | Solução Aplicada                                                     |
-| --- | ------ | ----------------------------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------- |
-| 01  | 01     | `0x80070659` (Python)                                       | Instalação bloqueada por política do sistema Windows            | Executar instalador como Administrador + marcar "Add Python to PATH" |
-| 02  | 01     | `$'\302\226d': command not found`                           | Caractere invisível Unicode ao copiar/colar comando no Git Bash | Digitar comandos manualmente                                         |
-| 03  | 01     | `cd: too many arguments`                                    | Nome de usuário contém espaço (`acxell PC`)                     | Usar `~` para representar a home; usar aspas em caminhos com espaço  |
-| 04  | 01     | `mkdir: Permission denied`                                  | Comando executado em pasta protegida do sistema                 | Navegar até a pasta home antes de criar diretórios                   |
-| 05  | 01     | `mkdir: File exists`                                        | Tentativa de criar pasta já existente                           | Navegar corretamente com `cd ..` em vez de recriar                   |
-| 06  | 02     | `User canceled device code authentication`                  | Autenticação OAuth cancelada no navegador                       | Repetir `git push`                                                   |
-| 07  | 02     | `Password authentication is not supported`                  | GitHub aboliu autenticação por senha                            | Usar OAuth via navegador                                             |
-| 08  | 02     | `unable to read askpass response`                           | Git Bash falhou ao abrir janela de autenticação                 | Repetir comando — navegador abriu corretamente                       |
-| 09  | 04     | `GET /favicon.ico 404 Not Found`                            | Navegador busca ícone automaticamente                           | Comportamento esperado — será resolvido com logo SVG                 |
-| 10  | 05     | `GET /.well-known/appspecific/com.chrome.devtools.json 404` | Chrome DevTools busca arquivo de debug                          | Inofensivo                                                           |
+| #   | Sessão | Erro                                       | Causa                                               | Solução Aplicada                              |
+| --- | ------ | ------------------------------------------ | --------------------------------------------------- | --------------------------------------------- |
+| 01  | 01     | `0x80070659` (Python)                      | Instalação bloqueada por política do Windows        | Executar instalador como Administrador        |
+| 02  | 01     | `$'\302\226d': command not found`          | Caractere invisível Unicode no Git Bash             | Digitar comandos manualmente                  |
+| 03  | 01     | `cd: too many arguments`                   | Nome de usuário com espaço (`acxell PC`)            | Usar `~` ou aspas nos caminhos                |
+| 04  | 02     | `Password authentication is not supported` | GitHub aboliu senhas comuns                         | Autenticação via OAuth (navegador/celular)    |
+| 05  | 08     | Erro de CORS no Globo 3D                   | Porta 5174 não estava na lista do backend           | Adicionar portas 5173 e 5174 no CORS          |
+| 06  | 08     | `Worker failed to load` (Vite)             | Incompatibilidade de Web Workers (Vite vs MapLibre) | Configurar `worker: { format: 'es' }` no Vite |
+| 07  | 08     | `API KEY REQUIRED` no mapa                 | CartoDB passou a exigir chave                       | Troca para ESRI World Imagery (gratuito)      |
+| 08  | 08.3   | Falha de compilação C++ no PC da escola    | Python 3.15 sem binários prontos                    | Instalar Python 3.12 isolado via `uv`         |
+| 09  | 08.4   | `WinError 10013`                           | Firewall bloqueou a porta 8000                      | Rodar servidor na porta 8080                  |
+| 10  | 08.8.1 | Avião voando "de lado"                     | Modelo 3D original aponta para o Eixo Leste         | Subtrair 90º (`heading - 90`) na orientação   |
 
 ---
 
@@ -73,97 +78,77 @@ Todo o código é versionado via **Git** e hospedado no **GitHub**, com commits 
 
 ### Backend
 
-- **Python 3.14**
+- **Python 3.14** (Casa) / **Python 3.12** (Escola via `uv`)
 - **FastAPI 0.142.2** — framework web assíncrono
 - **Uvicorn 0.54.0** — servidor ASGI
 - **Pydantic 2.13.5** — validação de dados
-- **Starlette 1.7.0** — base do FastAPI
 - **httpx 0.28.1** — cliente HTTP assíncrono
-- **httpcore 1.0.9** — núcleo HTTP
-- **certifi 2026.7.22** — certificados SSL
-- **Skyfield 1.55** — cálculo orbital (SGP4)
-- **NumPy 2.5.3** — computação numérica
-- **sgp4 2.27** — propagação orbital (padrão NORAD)
-- **jplephem 2.24** — efemérides planetárias
+- **Skyfield 1.55 / NumPy / SGP4** — cálculo orbital de satélites
+- **adsbdb API** — integração de dados de rotas aéreas
 
-### Frontend (a implementar)
+### Frontend
 
-- React 18+
-- MapLibre GL JS / CesiumJS
-- Vite
+- **React 19** + **Vite 8**
+- **MapLibre GL JS** (Visão 2D)
+- **CesiumJS** (Visão 3D Orbital)
+- **ESRI ArcGIS** (Camada de satélite com labels)
 
 ### Infraestrutura
 
-- Git + GitHub
-- Ambiente virtual Python (`venv`)
-- Pinokio (planejado para distribuição 1-clique)
+- Git + GitHub (Sincronização entre múltiplos PCs)
+- Ambiente virtual Python (`venv` / `uv`)
+- Ngrok (Planejado para exposição segura HTTPS)
 
 ---
 
 ## 6. Registro de Decisões Técnicas
 
-| Decisão                                  | Justificativa                                                                                                        | Data       |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------- |
-| **Nome PROJECT ARGUS**                   | Referência a Argos Panoptes (mitologia grega, cem olhos). Original, defensável academicamente.                       | 05/10/2026 |
-| **Cor-assinatura ARGUS AMBER (#FFB020)** | Traduz o "olho flamejante", diferencia de projetos cyberpunk genéricos (azul/roxo)                                   | 05/10/2026 |
-| **Python + FastAPI**                     | Framework moderno, assíncrono, com documentação automática (Swagger). Ideal para APIs que consomem múltiplas fontes. | 05/10/2026 |
-| **httpx em vez de requests**             | httpx suporta async nativo, alinhado com FastAPI                                                                     | 05/10/2026 |
-| **OpenSky Network**                      | API pública, gratuita, sem autenticação obrigatória                                                                  | 05/10/2026 |
-| **Pasta collectors/**                    | Separação de responsabilidades: cada fonte de dados tem seu próprio módulo                                           | 05/10/2026 |
+| Decisão                       | Justificativa                                                                                                                            | Data       |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| **Nome PROJECT ARGUS**        | Referência a Argos Panoptes (cem olhos). Original e defensável.                                                                          | 05/10/2026 |
+| **Cor ARGUS AMBER (#FFB020)** | Traduz o "olho flamejante" e diferencia de projetos genéricos.                                                                           | 05/10/2026 |
+| **Uso do CesiumJS**           | Melhor biblioteca open-source para globo 3D e modelos `.glb`.                                                                            | 20/10/2026 |
+| **Enriquecimento via adsbdb** | API gratuita que fornece companhia, origem e destino sem chave.                                                                          | 23/10/2026 |
+| **Modelos 3D coloridos**      | Baixar 200 modelos diferentes travaria o navegador. A solução foi usar um modelo base e aplicar cores da companhia via `ColorBlendMode`. | 23/10/2026 |
 
 ---
 
 ## 7. Aprendizados Relevantes para o TCC
 
-### 7.1 Ambientes Virtuais
+### 7.1 Ambientes Virtuais e Portabilidade
 
-O uso de `venv` isola as dependências do projeto, evitando conflitos com o Python global do sistema. O arquivo `requirements.txt` garante a reprodutibilidade do ambiente — requisito importante para avaliação acadêmica.
+A experiência no PC da escola mostrou a importância de ambientes isolados. O uso do `uv` permitiu instalar o Python 3.12 e todas as dependências sem precisar de permissões de administrador, garantindo que o projeto rode em qualquer máquina.
 
-### 7.2 FastAPI e Documentação Automática
+### 7.2 Visualização Geoespacial 3D
 
-O FastAPI gera automaticamente uma documentação interativa (Swagger UI) acessível em `/docs`, o que demonstra profissionalismo e facilita a avaliação da API por terceiros.
+No CesiumJS, modelos 3D padrão (`.glb`) frequentemente têm seu eixo frontal no Leste (X), enquanto dados de aviação usam o Norte (Y). A conversão matemática (`heading - 90`) foi essencial para alinhar a física do voo à representação visual.
 
-### 7.3 Autenticação GitHub
+### 7.3 Integração de Múltiplas APIs (OSINT)
 
-Desde 2021 o GitHub não aceita senha comum para operações Git via HTTPS, exigindo Personal Access Token (PAT) ou autenticação OAuth via navegador.
-
-### 7.4 Caminhos com Espaço no Windows
-
-Nomes de usuário com espaço (ex: `acxell PC`) exigem cuidado extra no Git Bash. Solução: usar `~` para representar a home ou colocar o caminho entre aspas.
-
-### 7.5 APIs Abertas e OSINT
-
-A OpenSky Network demonstrou que é possível obter dados globais em tempo real de forma gratuita e legal. Isso valida a viabilidade técnica do ARGUS como projeto de OSINT.
-
-### 7.6 Filtros Geográficos (bbox)
-
-O parâmetro `bbox` (bounding box) permite filtrar dados por área geográfica, essencial para análises regionais (ex: apenas voos sobre o Brasil).
+O ARGUS consome com sucesso OpenSky (posições), adsbdb (rotas) e Celestrak (órbitas), provando que é possível construir uma ferramenta de monitoramento global usando apenas dados públicos e gratuitos.
 
 ---
 
 ## 8. Estatísticas do Projeto
 
-| Métrica                             | Valor                                                         |
-| ----------------------------------- | ------------------------------------------------------------- |
-| Total de sessões concluídas         | 8 (00 a 07)                                                   |
-| Total de commits no GitHub          | 8                                                             |
-| Fontes de dados integradas          | 3 (OpenSky, Celestrak+Skyfield, USGS)                         |
-| Endpoints da API                    | 5 (`/`, `/health`, `/flights`, `/satellites`, `/earthquakes`) |
-| Aeronaves rastreadas (global)       | ~8.664                                                        |
-| Satélites rastreados                | ~10.690                                                       |
-| Terremotos disponíveis (M2.5+, 24h) | ~40                                                           |
+| Métrica                     | Valor                                                         |
+| --------------------------- | ------------------------------------------------------------- |
+| Total de sessões concluídas | 18 (00 a 08.8.1)                                              |
+| Total de commits no GitHub  | 10+                                                           |
+| Fontes de dados integradas  | 4 (OpenSky, Celestrak, USGS, adsbdb)                          |
+| Endpoints da API            | 5 (`/`, `/health`, `/flights`, `/satellites`, `/earthquakes`) |
+| Aeronaves no globo          | 200 (com modelo 3D, cor e rota)                               |
+| Satélites disponíveis (API) | ~10.690                                                       |
 
 ---
 
 ## 9. Próximas Etapas
 
-- ✅ Sessão 05: Coletor de voos em tempo real (OpenSky Network)
-- ✅ Sessão 06: Coletor de satélites (Celestrak + Skyfield)
-- 🔜 Sessão 08: Frontend inicial (dashboard React + MapLibre)
-- 🔜 Sessão 09: Camadas visuais + HUD estilo ARGUS
-- 🔜 Sessão 10: Motor de alertas de anomalias
-- 🔜 Sessão 11: Empacotamento via Pinokio
-- 🔜 Sessão 12: Documentação final e vídeo demo
+- ✅ Sessão 08.8: Modelos 3D de aviões com rastro e cores.
+- 🔜 Sessão 09: Inserir satélites orbitando em 3D no globo (CesiumJS).
+- 🔜 Sessão 10: Exibir terremotos no globo 3D.
+- 🔜 Sessão 11: Implementar a IA **VISION** (Comandos de voz e respostas).
+- 🔜 Sessão 12: Documentação final do TCC e vídeo de demonstração.
 
 ---
 
@@ -171,5 +156,5 @@ O parâmetro `bbox` (bounding box) permite filtrar dados por área geográfica, 
 
 Este relatório é atualizado ao final de cada sessão e serve como fonte primária para o capítulo de Metodologia e Resultados do TCC. Todo o código-fonte está disponível no repositório oficial, com histórico completo de commits.
 
-**Última atualização:** 05/10/2026 às 21:55
-**Próxima atualização prevista:** após Sessão 06
+**Última atualização:** 23/10/2026
+**Próxima atualização prevista:** após Sessão 09 (Satélites em 3D)

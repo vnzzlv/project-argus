@@ -1,5 +1,5 @@
 /**
- * PROJECT ARGUS 3D — Modelos 3D, Rastro e Origem/Destino
+ * PROJECT ARGUS 3D — Aviões e Satélites
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -8,13 +8,11 @@ import "cesium/Build/Cesium/Widgets/widgets.css";
 import "./App.css";
 
 const API_URL = "http://127.0.0.1:8000";
-const REFRESH_MS = 20000;
+const REFRESH_MS = 60000;
 
-// Cor por companhia aérea (baseado no código ICAO)
 function corPorCompanhia(companhia) {
-  if (!companhia || !companhia.icao) {
+  if (!companhia || !companhia.icao)
     return Cesium.Color.fromCssColorString("#FFB020");
-  }
   const mapa = {
     GLO: "#FF7A00",
     TAM: "#8B1E3F",
@@ -36,14 +34,12 @@ function corPorCompanhia(companhia) {
   return Cesium.Color.fromCssColorString(mapa[companhia.icao] || "#FFB020");
 }
 
-// Calcula nova posição dado lon/lat/heading/distância (km)
 function moverPosicao(lon, lat, headingDeg, distanciaKm) {
   const R = 6371;
   const brng = Cesium.Math.toRadians(headingDeg);
   const lat1 = Cesium.Math.toRadians(lat);
   const lon1 = Cesium.Math.toRadians(lon);
   const d = distanciaKm / R;
-
   const lat2 = Math.asin(
     Math.sin(lat1) * Math.cos(d) +
       Math.cos(lat1) * Math.sin(d) * Math.cos(brng),
@@ -54,19 +50,22 @@ function moverPosicao(lon, lat, headingDeg, distanciaKm) {
       Math.sin(brng) * Math.sin(d) * Math.cos(lat1),
       Math.cos(d) - Math.sin(lat1) * Math.sin(lat2),
     );
-
   return { lon: Cesium.Math.toDegrees(lon2), lat: Cesium.Math.toDegrees(lat2) };
 }
 
 function App() {
   const containerRef = useRef(null);
   const viewerRef = useRef(null);
-  const dataSourceRef = useRef(null);
+  const flightsDataSourceRef = useRef(null);
+  const satellitesDataSourceRef = useRef(null);
+
   const flightsDataRef = useRef([]);
   const baseTimeRef = useRef(null);
+
   const [flightCount, setFlightCount] = useState(0);
   const [status, setStatus] = useState("INICIALIZANDO...");
   const [loading, setLoading] = useState(false);
+  const [showSatellites, setShowSatellites] = useState(false);
 
   useEffect(() => {
     if (viewerRef.current) return;
@@ -112,26 +111,31 @@ function App() {
     });
     viewerRef.current = viewer;
 
-    const dataSource = new Cesium.CustomDataSource("flights");
-    dataSource.clustering.enabled = true;
-    dataSource.clustering.pixelRange = 40;
-    dataSource.clustering.minimumClusterSize = 4;
-    dataSource.clustering.clusterEvent.addEventListener((entities, cluster) => {
-      cluster.billboard.show = false;
-      cluster.label.show = true;
-      cluster.label.text = `${entities.length}`;
-      cluster.label.font = "bold 13px Inter, sans-serif";
-      cluster.label.fillColor = Cesium.Color.fromCssColorString("#FFB020");
-      cluster.label.outlineColor = Cesium.Color.fromCssColorString("#05060A");
-      cluster.label.outlineWidth = 3;
-      cluster.label.style = Cesium.LabelStyle.FILL_AND_OUTLINE;
-      cluster.label.horizontalOrigin = Cesium.HorizontalOrigin.CENTER;
-      cluster.label.verticalOrigin = Cesium.VerticalOrigin.CENTER;
-      cluster.point.show = false;
-    });
+    const flightsDataSource = new Cesium.CustomDataSource("flights");
+    flightsDataSource.clustering.enabled = true;
+    flightsDataSource.clustering.pixelRange = 40;
+    flightsDataSource.clustering.minimumClusterSize = 4;
+    flightsDataSource.clustering.clusterEvent.addEventListener(
+      (entities, cluster) => {
+        cluster.billboard.show = false;
+        cluster.label.show = true;
+        cluster.label.text = `${entities.length}`;
+        cluster.label.font = "bold 13px Inter, sans-serif";
+        cluster.label.fillColor = Cesium.Color.fromCssColorString("#FFB020");
+        cluster.label.outlineColor = Cesium.Color.fromCssColorString("#05060A");
+        cluster.label.outlineWidth = 3;
+        cluster.label.style = Cesium.LabelStyle.FILL_AND_OUTLINE;
+        cluster.label.horizontalOrigin = Cesium.HorizontalOrigin.CENTER;
+        cluster.label.verticalOrigin = Cesium.VerticalOrigin.CENTER;
+        cluster.point.show = false;
+      },
+    );
+    viewer.dataSources.add(flightsDataSource);
+    flightsDataSourceRef.current = flightsDataSource;
 
-    viewer.dataSources.add(dataSource);
-    dataSourceRef.current = dataSource;
+    const satellitesDataSource = new Cesium.CustomDataSource("satellites");
+    viewer.dataSources.add(satellitesDataSource);
+    satellitesDataSourceRef.current = satellitesDataSource;
 
     carregarVoos();
     const interval = setInterval(carregarVoos, REFRESH_MS);
@@ -162,11 +166,11 @@ function App() {
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/flights?limit=200`);
-      const data = await res.json();
+      if (!res.ok) throw new Error("API fora do ar");
 
-      const viewer = viewerRef.current;
-      const dataSource = dataSourceRef.current;
-      if (!viewer || !dataSource) return;
+      const data = await res.json();
+      const dataSource = flightsDataSourceRef.current;
+      if (!dataSource) return;
 
       flightsDataRef.current = data.voos.filter(
         (v) => v.latitude && v.longitude,
@@ -181,7 +185,6 @@ function App() {
         const altVisual = 2000 + (v.altitude_m || 10000) * 0.05;
         const corCompanhia = corPorCompanhia(v.companhia_aerea);
 
-        // Callback da posição em tempo real
         const posCallback = new Cesium.CallbackProperty(() => {
           const elapsedSec = (Date.now() - baseTimeRef.current) / 1000;
           const distKm = ((v.velocidade_ms || 200) * elapsedSec) / 1000;
@@ -194,11 +197,9 @@ function App() {
           return Cesium.Cartesian3.fromDegrees(nova.lon, nova.lat, altVisual);
         }, false);
 
-        // Callback da orientação CORRIGIDA (Avião de frente para o voo)
         const orientationCallback = new Cesium.CallbackProperty(() => {
           const pos = posCallback.getValue();
           if (!pos) return Cesium.Quaternion.IDENTITY;
-          // O modelo original aponta para o Leste (Eixo X), então subtraímos 90º para alinhar com o Norte
           const headingRad = Cesium.Math.toRadians((v.heading || 0) - 90);
           return Cesium.Transforms.headingPitchRollQuaternion(
             pos,
@@ -206,7 +207,6 @@ function App() {
           );
         }, false);
 
-        // ============ ENTIDADE DO AVIÃO (MODELO 3D) ============
         dataSource.entities.add({
           id,
           name: v.callsign || "N/A",
@@ -218,69 +218,43 @@ function App() {
             maximumScale: 20000,
             color: corCompanhia,
             colorBlendMode: Cesium.ColorBlendMode.MIX,
-            colorBlendAmount: 0.8, // 80% da cor, 20% da textura original
-          },
-          properties: {
-            callsign: v.callsign || "N/A",
-            pais: v.pais_origem || "N/A",
-            altitude: v.altitude_m || 0,
-            velocidade: v.velocidade_ms || 0,
-            heading: v.heading || 0,
+            colorBlendAmount: 0.8,
           },
           description: `
             <div style="font-family: Inter, sans-serif; color:#05060A; padding:8px; min-width:240px;">
               <strong style="font-size:16px; color:#FF7A00;">${v.callsign || "N/A"}</strong>
-              <div style="font-size:12px; color:#666; margin-top:2px;">
-                ${v.companhia_aerea?.nome || "Companhia desconhecida"}
-              </div>
+              <div style="font-size:12px; color:#666; margin-top:2px;">${v.companhia_aerea?.nome || "Desconhecida"}</div>
               <hr style="border:none; border-top:1px solid #ddd; margin:8px 0;"/>
-              <div style="font-size:13px;">
-                <strong>🛫 Origem:</strong><br/>
-                ${v.origem ? `${v.origem.cidade || "?"} (${v.origem.iata || "?"}) — ${v.origem.pais || "?"}` : "Desconhecida"}
-              </div>
-              <div style="font-size:13px; margin-top:6px;">
-                <strong>🛬 Destino:</strong><br/>
-                ${v.destino ? `${v.destino.cidade || "?"} (${v.destino.iata || "?"}) — ${v.destino.pais || "?"}` : "Desconhecido"}
-              </div>
-              <hr style="border:none; border-top:1px solid #ddd; margin:8px 0;"/>
-              <div style="font-size:12px;">
-                <strong>Altitude:</strong> ${Math.round(v.altitude_m || 0)} m<br/>
-                <strong>Velocidade:</strong> ${Math.round(v.velocidade_ms || 0)} m/s<br/>
-                <strong>Rumo:</strong> ${Math.round(v.heading || 0)}°
-              </div>
+              <div style="font-size:13px;"><strong>🛫 Origem:</strong><br/>${v.origem ? `${v.origem.cidade || "?"} (${v.origem.iata || "?"})` : "Desconhecida"}</div>
+              <div style="font-size:13px; margin-top:6px;"><strong>🛬 Destino:</strong><br/>${v.destino ? `${v.destino.cidade || "?"} (${v.destino.iata || "?"})` : "Desconhecido"}</div>
             </div>
           `,
         });
 
-        // ============ RASTRO ATRÁS DO AVIÃO ============
         dataSource.entities.add({
           polyline: {
             positions: new Cesium.CallbackProperty(() => {
               const elapsedSec = (Date.now() - baseTimeRef.current) / 1000;
               const distKm = ((v.velocidade_ms || 200) * elapsedSec) / 1000;
-
-              // Posição atual do avião
               const atual = moverPosicao(
                 v.longitude,
                 v.latitude,
                 v.heading || 0,
                 distKm,
               );
-              // Posição de onde ele veio (150km atrás)
               const atras = moverPosicao(
                 v.longitude,
                 v.latitude,
                 v.heading || 0,
                 Math.max(0, distKm - 150),
               );
-
               return Cesium.Cartesian3.fromDegreesArrayHeights([
                 atras.lon,
                 atras.lat,
-                altVisual, // Início do rastro (atrás)
+                altVisual,
                 atual.lon,
                 atual.lat,
-                altVisual, // Fim do rastro (onde o avião está)
+                altVisual,
               ]);
             }, false),
             width: 2,
@@ -290,21 +264,95 @@ function App() {
             }),
           },
         });
-
         adicionados++;
       }
-
       setFlightCount(adicionados);
       setStatus("ARGUS ONLINE");
     } catch (err) {
-      console.error("Erro ao carregar voos:", err);
-      setStatus("ERRO DE CONEXÃO");
+      console.error(err);
+      setStatus((prev) =>
+        prev === "INICIALIZANDO..." ? "AGUARDANDO SINAL..." : prev,
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRefresh = () => carregarVoos();
+  const toggleSatellites = async () => {
+    const dataSource = satellitesDataSourceRef.current;
+    if (!dataSource) return;
+
+    if (showSatellites) {
+      dataSource.entities.removeAll();
+      setShowSatellites(false);
+      return;
+    }
+
+    try {
+      setStatus("BUSCANDO SATÉLITES...");
+      viewerRef.current.camera.flyTo({
+        destination: Cesium.Cartesian3.fromDegrees(-50, 15, 25000000),
+        duration: 2,
+      });
+
+      const res = await fetch(`${API_URL}/satellites?grupo=estacoes&limit=50`);
+      const data = await res.json();
+
+      dataSource.entities.removeAll();
+
+      for (const sat of data.satelites) {
+        const altMetros = sat.altitude_km * 1000;
+
+        dataSource.entities.add({
+          name: sat.nome,
+          position: Cesium.Cartesian3.fromDegrees(
+            sat.longitude,
+            sat.latitude,
+            altMetros,
+          ),
+
+          // PONTO DE RADAR CIANO (À PROVA DE FALHAS)
+          point: {
+            pixelSize: 10, // Tamanho do ponto
+            color: Cesium.Color.CYAN, // Cor ciano brilhante
+            outlineColor: Cesium.Color.BLACK, // Borda preta para destacar
+            outlineWidth: 2,
+            disableDepthTestDistance: Number.POSITIVE_INFINITY, // Não some atrás da Terra
+          },
+
+          // LABEL COM O NOME DO SATÉLITE
+          label: {
+            text: sat.nome,
+            font: "12px Inter, sans-serif",
+            fillColor: Cesium.Color.CYAN,
+            outlineColor: Cesium.Color.BLACK,
+            outlineWidth: 3,
+            style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+            pixelOffset: new Cesium.Cartesian2(0, -20),
+            showBackground: true,
+            backgroundColor:
+              Cesium.Color.fromCssColorString("#05060A").withAlpha(0.8),
+            disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          },
+          description: `
+            <div style="font-family: Inter; padding: 8px;">
+              <strong style="color: #00E5FF; font-size: 16px;">🛰️ ${sat.nome}</strong><br/>
+              <hr style="border:none; border-top:1px solid #ccc; margin: 8px 0;"/>
+              <strong>NORAD ID:</strong> ${sat.norad_id}<br/>
+              <strong>Altitude:</strong> ${Math.round(sat.altitude_km)} km<br/>
+              <strong>Lat:</strong> ${sat.latitude}°<br/>
+              <strong>Lon:</strong> ${sat.longitude}°
+            </div>
+          `,
+        });
+      }
+      setShowSatellites(true);
+      setStatus("ARGUS ONLINE");
+    } catch (err) {
+      console.error(err);
+      setStatus("ERRO AO BUSCAR SATÉLITES");
+    }
+  };
 
   const handleOrbitalView = () => {
     viewerRef.current?.camera.flyTo({
@@ -339,13 +387,21 @@ function App() {
       </div>
 
       <div className="argus-actions">
+        <button className="argus-refresh" onClick={toggleSatellites}>
+          <span className="argus-btn-en">
+            {showSatellites ? "HIDE SATELLITES" : "SHOW SATELLITES"}
+          </span>
+          <span className="argus-btn-pt">
+            {showSatellites ? "Ocultar satélites" : "Mostrar satélites"}
+          </span>
+        </button>
         <button className="argus-refresh" onClick={handleOrbitalView}>
           <span className="argus-btn-en">ORBITAL VIEW</span>
           <span className="argus-btn-pt">Visão orbital</span>
         </button>
         <button
           className="argus-refresh"
-          onClick={handleRefresh}
+          onClick={carregarVoos}
           disabled={loading}
         >
           <span className="argus-btn-en">
