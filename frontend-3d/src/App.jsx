@@ -1,5 +1,5 @@
 /**
- * PROJECT ARGUS 3D — Tempo Real com Origem/Destino/Companhia
+ * PROJECT ARGUS 3D — Modelos 3D, Rastro e Origem/Destino
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -55,10 +55,7 @@ function moverPosicao(lon, lat, headingDeg, distanciaKm) {
       Math.cos(d) - Math.sin(lat1) * Math.sin(lat2),
     );
 
-  return {
-    lon: Cesium.Math.toDegrees(lon2),
-    lat: Cesium.Math.toDegrees(lat2),
-  };
+  return { lon: Cesium.Math.toDegrees(lon2), lat: Cesium.Math.toDegrees(lat2) };
 }
 
 function App() {
@@ -113,7 +110,6 @@ function App() {
     viewer.camera.setView({
       destination: Cesium.Cartesian3.fromDegrees(-50, 15, 18000000),
     });
-
     viewerRef.current = viewer;
 
     const dataSource = new Cesium.CustomDataSource("flights");
@@ -176,7 +172,6 @@ function App() {
         (v) => v.latitude && v.longitude,
       );
       baseTimeRef.current = Date.now();
-
       dataSource.entities.removeAll();
 
       let adicionados = 0;
@@ -186,6 +181,7 @@ function App() {
         const altVisual = 2000 + (v.altitude_m || 10000) * 0.05;
         const corCompanhia = corPorCompanhia(v.companhia_aerea);
 
+        // Callback da posição em tempo real
         const posCallback = new Cesium.CallbackProperty(() => {
           const elapsedSec = (Date.now() - baseTimeRef.current) / 1000;
           const distKm = ((v.velocidade_ms || 200) * elapsedSec) / 1000;
@@ -198,15 +194,31 @@ function App() {
           return Cesium.Cartesian3.fromDegrees(nova.lon, nova.lat, altVisual);
         }, false);
 
+        // Callback da orientação CORRIGIDA (Avião de frente para o voo)
+        const orientationCallback = new Cesium.CallbackProperty(() => {
+          const pos = posCallback.getValue();
+          if (!pos) return Cesium.Quaternion.IDENTITY;
+          // O modelo original aponta para o Leste (Eixo X), então subtraímos 90º para alinhar com o Norte
+          const headingRad = Cesium.Math.toRadians((v.heading || 0) - 90);
+          return Cesium.Transforms.headingPitchRollQuaternion(
+            pos,
+            new Cesium.HeadingPitchRoll(headingRad, 0, 0),
+          );
+        }, false);
+
+        // ============ ENTIDADE DO AVIÃO (MODELO 3D) ============
         dataSource.entities.add({
           id,
           name: v.callsign || "N/A",
           position: posCallback,
-          point: {
-            pixelSize: 6,
+          orientation: orientationCallback,
+          model: {
+            uri: "https://raw.githubusercontent.com/CesiumGS/cesium/main/Apps/SampleData/models/CesiumAir/Cesium_Air.glb",
+            minimumPixelSize: 32,
+            maximumScale: 20000,
             color: corCompanhia,
-            outlineColor: Cesium.Color.fromCssColorString("#05060A"),
-            outlineWidth: 2,
+            colorBlendMode: Cesium.ColorBlendMode.MIX,
+            colorBlendAmount: 0.8, // 80% da cor, 20% da textura original
           },
           properties: {
             callsign: v.callsign || "N/A",
@@ -240,42 +252,41 @@ function App() {
           `,
         });
 
-        const destinoLinha = moverPosicao(
-          v.longitude,
-          v.latitude,
-          v.heading || 0,
-          300,
-        );
+        // ============ RASTRO ATRÁS DO AVIÃO ============
         dataSource.entities.add({
           polyline: {
             positions: new Cesium.CallbackProperty(() => {
               const elapsedSec = (Date.now() - baseTimeRef.current) / 1000;
               const distKm = ((v.velocidade_ms || 200) * elapsedSec) / 1000;
-              const inicio = moverPosicao(
+
+              // Posição atual do avião
+              const atual = moverPosicao(
                 v.longitude,
                 v.latitude,
                 v.heading || 0,
                 distKm,
               );
-              const fim = moverPosicao(
-                inicio.lon,
-                inicio.lat,
+              // Posição de onde ele veio (150km atrás)
+              const atras = moverPosicao(
+                v.longitude,
+                v.latitude,
                 v.heading || 0,
-                250,
+                Math.max(0, distKm - 150),
               );
+
               return Cesium.Cartesian3.fromDegreesArrayHeights([
-                inicio.lon,
-                inicio.lat,
-                altVisual,
-                fim.lon,
-                fim.lat,
-                altVisual,
+                atras.lon,
+                atras.lat,
+                altVisual, // Início do rastro (atrás)
+                atual.lon,
+                atual.lat,
+                altVisual, // Fim do rastro (onde o avião está)
               ]);
             }, false),
-            width: 1.5,
+            width: 2,
             material: new Cesium.PolylineGlowMaterialProperty({
               glowPower: 0.3,
-              color: Cesium.Color.fromCssColorString("#FFB020").withAlpha(0.7),
+              color: corCompanhia.withAlpha(0.8),
             }),
           },
         });
