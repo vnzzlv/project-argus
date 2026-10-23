@@ -6,17 +6,32 @@ Backend FastAPI — Ponto de entrada principal.
 
 import httpx
 from fastapi import FastAPI, Query, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timezone
 from collectors.flights import fetch_flights
 from collectors.satellites import fetch_satellites, GRUPOS
 from collectors.earthquakes import fetch_earthquakes, PERIODOS, MAGNITUDES
-
+from collectors.flight_enricher import enrich_flights
 app = FastAPI(
     title="PROJECT ARGUS API",
     description="Sistema Unificado Global de Reconhecimento Agregado",
     version="0.1.0",
     docs_url="/docs",
     redoc_url="/redoc",
+)
+
+# CORS — libera o frontend (Vite em localhost:5173)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -51,12 +66,13 @@ async def flights(
         bbox = {"lamin": -35.0, "lomin": -75.0, "lamax": 6.0, "lomax": -34.0}
 
     try:
-        return await fetch_flights(limit=limit, bbox=bbox)
+        dados = await fetch_flights(limit=limit, bbox=bbox)
+        dados["voos"] = await enrich_flights(dados.get("voos", []), max_enriquecer=80)
+        return dados
     except httpx.HTTPStatusError as e:
         raise HTTPException(status_code=502, detail=f"Erro OpenSky: {e}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro interno: {e}")
-
 
 @app.get("/satellites")
 async def satellites(

@@ -1,0 +1,48 @@
+/* PROJECT ARGUS 3D — Estilos globais */
+
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap");
+
+:root {
+  --void-black: #05060a;
+  --obsidian: #0b0d14;
+  --argus-amber: #ffb020;
+  --ember-gold: #ff7a00;
+  --ash-gray: #8a8f98;
+  --bone-white: #f5f1e8;
+
+  font-family: "Inter", system-ui, sans-serif;
+  color-scheme: dark;
+  color: var(--bone-white);
+  background-color: var(--void-black);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--void-black);
+  color: var(--bone-white);
+}
+
+h1,
+h2,
+h3 {
+  font-family: "Orbitron", sans-serif;
+  color: var(--argus-amber);
+  letter-spacing: 0.05em;
+}
+
+.mono {
+  font-family: "JetBrains Mono", monospace;
+}
