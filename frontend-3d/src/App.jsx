@@ -1,11 +1,12 @@
 /**
- * PROJECT ARGUS 3D — Aviões, Satélites e Terremotos
+ * PROJECT ARGUS 3D — Aviões, Satélites, Terremotos e VISION
  */
 
 import { useEffect, useRef, useState } from "react";
 import * as Cesium from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import "./App.css";
+import IntroScreen from "./IntroScreen";
 
 const API_URL = "http://127.0.0.1:8000";
 const REFRESH_MS = 60000;
@@ -39,7 +40,7 @@ function infoPorSatelite(nome) {
   if (n.includes("STARLINK"))
     return { empresa: "SpaceX", cor: Cesium.Color.CYAN };
   if (n.includes("ISS") || n.includes("ZARYA"))
-    return { empresa: "NASA/ESA/JAXA", cor: Cesium.Color.WHITE };
+    return { empresa: "NASA/ESA", cor: Cesium.Color.WHITE };
   if (
     n.includes("CSS") ||
     n.includes("SHENZHOU") ||
@@ -83,19 +84,154 @@ function App() {
   const viewerRef = useRef(null);
   const flightsDataSourceRef = useRef(null);
   const satellitesDataSourceRef = useRef(null);
-  const earthquakesDataSourceRef = useRef(null); // Novo DataSource
+  const earthquakesDataSourceRef = useRef(null);
 
   const flightsDataRef = useRef([]);
   const baseTimeRef = useRef(null);
 
+  const [isSystemActive, setIsSystemActive] = useState(false);
   const [flightCount, setFlightCount] = useState(0);
   const [status, setStatus] = useState("INICIALIZANDO...");
   const [loading, setLoading] = useState(false);
   const [showSatellites, setShowSatellites] = useState(false);
   const [showEarthquakes, setShowEarthquakes] = useState(false);
 
+  const [isListening, setIsListening] = useState(false);
+  const [visionMessage, setVisionMessage] = useState("");
+  const audioRef = useRef(null);
+
+  const visionFalar = (texto) => {
+    if (!window.speechSynthesis) return;
+    const utterance = new SpeechSynthesisUtterance(texto);
+    utterance.lang = "pt-BR";
+    utterance.rate = 1.0;
+    utterance.pitch = 0.9;
+
+    const voices = window.speechSynthesis.getVoices();
+    const vozMasculina = voices.find(
+      (v) =>
+        v.lang === "pt-BR" &&
+        (v.name.includes("Daniel") ||
+          v.name.includes("Antonio") ||
+          v.name.includes("Male")),
+    );
+    if (vozMasculina) utterance.voice = vozMasculina;
+
+    window.speechSynthesis.speak(utterance);
+    setVisionMessage(texto);
+  };
+
+  const tocarMusica = (faixa = 1) => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    audioRef.current = new Audio(`/trilha${faixa}.mp3`);
+    audioRef.current.volume = 0.4;
+    audioRef.current.loop = true;
+    audioRef.current
+      .play()
+      .catch((e) => console.log("Erro ao tocar áudio:", e));
+    visionFalar(`Iniciando trilha ${faixa}, senhor.`);
+  };
+
+  const pararMusica = () => {
+    if (audioRef.current) audioRef.current.pause();
+    visionFalar("Silenciando trilha sonora, senhor.");
+  };
+
+  const ajustarVolumePorComando = (comando) => {
+    const match = comando.match(/\d+/);
+    if (match) {
+      const volumePorcentagem = parseInt(match[0], 10);
+      if (volumePorcentagem >= 0 && volumePorcentagem <= 100) {
+        if (audioRef.current) {
+          audioRef.current.volume = volumePorcentagem / 100;
+          visionFalar(
+            `Volume ajustado para ${volumePorcentagem} por cento, senhor.`,
+          );
+        } else {
+          visionFalar("Nenhuma trilha sonora está ativa no momento, senhor.");
+        }
+      }
+    }
+  };
+
+  // ============ ESCUTA CONTÍNUA (CORRIGIDA) ============
   useEffect(() => {
-    if (viewerRef.current) return;
+    if (!isSystemActive) return;
+
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setVisionMessage("Navegador não suporta reconhecimento de voz.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "pt-BR";
+    recognition.continuous = true;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => {
+      setIsListening(false);
+      setTimeout(() => {
+        try {
+          recognition.start();
+        } catch (e) {}
+      }, 1000);
+    };
+    recognition.onerror = (e) => {
+      console.error("Erro no mic:", e.error);
+      setIsListening(false);
+    };
+
+    recognition.onresult = (event) => {
+      const ultimo = event.results.length - 1;
+      const comando = event.results[ultimo][0].transcript.toLowerCase();
+      console.log("VISION ouviu:", comando);
+
+      if (
+        comando.includes("modo viana") ||
+        comando.includes("tocar música") ||
+        comando.includes("trilha 1")
+      ) {
+        tocarMusica(1);
+      } else if (comando.includes("trilha 2")) {
+        tocarMusica(2);
+      } else if (comando.includes("trilha 3")) {
+        tocarMusica(3);
+      } else if (comando.includes("trilha 4")) {
+        tocarMusica(4);
+      } else if (
+        comando.includes("silêncio") ||
+        comando.includes("parar música") ||
+        comando.includes("pausar")
+      ) {
+        pararMusica();
+      } else if (comando.includes("volume")) {
+        ajustarVolumePorComando(comando);
+      } else if (comando.includes("ativar olho de deus")) {
+        visionFalar("Ativando todas as camadas de dados, senhor.");
+        if (!showSatellites) toggleSatellites();
+        if (!showEarthquakes) toggleEarthquakes();
+      }
+    };
+
+    try {
+      recognition.start();
+    } catch (e) {
+      console.log("Erro ao iniciar mic", e);
+    }
+
+    return () => {
+      recognition.abort();
+    };
+  }, [isSystemActive]); // CORRIGIDO: Removido showSatellites e showEarthquakes para não reiniciar o mic toda hora
+
+  // ============ INICIALIZAÇÃO DO CESIUM ============
+  useEffect(() => {
+    if (viewerRef.current || !isSystemActive) return;
 
     const viewer = new Cesium.Viewer(containerRef.current, {
       animation: false,
@@ -138,7 +274,6 @@ function App() {
     });
     viewerRef.current = viewer;
 
-    // DataSources
     const flightsDataSource = new Cesium.CustomDataSource("flights");
     flightsDataSource.clustering.enabled = true;
     flightsDataSource.clustering.pixelRange = 40;
@@ -192,15 +327,19 @@ function App() {
       handler.destroy();
       viewer.destroy();
     };
-  }, []);
+  }, [isSystemActive]);
 
+  // ============ CARREGAR VOOS (CORRIGIDO) ============
   const carregarVoos = async () => {
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/flights?limit=200`);
-      if (!res.ok) throw new Error("API fora do ar");
-
       const data = await res.json();
+
+      if (!data || !data.voos) {
+        throw new Error("Dados de voos inválidos");
+      }
+
       const dataSource = flightsDataSourceRef.current;
       if (!dataSource) return;
 
@@ -298,13 +437,12 @@ function App() {
         });
         adicionados++;
       }
+
       setFlightCount(adicionados);
-      setStatus("ARGUS ONLINE");
+      setStatus(adicionados > 0 ? "ARGUS ONLINE" : "SEM VOOS (FALLBACK)");
     } catch (err) {
-      console.error(err);
-      setStatus((prev) =>
-        prev === "INICIALIZANDO..." ? "AGUARDANDO SINAL..." : prev,
-      );
+      console.error("Erro ao carregar voos:", err);
+      setStatus("ERRO AO CARREGAR VOOS");
     } finally {
       setLoading(false);
     }
@@ -383,7 +521,6 @@ function App() {
     }
   };
 
-  // ============ FUNÇÃO DE CARREGAR TERREMOTOS ============
   const toggleEarthquakes = async () => {
     const dataSource = earthquakesDataSourceRef.current;
     if (!dataSource) return;
@@ -409,7 +546,6 @@ function App() {
       dataSource.entities.removeAll();
 
       for (const eq of data.terremotos) {
-        // Tamanho do ponto baseado na magnitude (M2.5 = 10px, M6.0 = 24px)
         const tamanho = Math.max(10, eq.magnitude * 4);
 
         dataSource.entities.add({
@@ -439,7 +575,6 @@ function App() {
               <hr style="border:none; border-top:1px solid #ddd; margin:8px 0;"/>
               <strong>Profundidade:</strong> ${Math.round(eq.profundidade_km)} km<br/>
               <strong>Alerta de Tsunami:</strong> ${eq.tsunami ? "⚠️ SIM" : "Não"}<br/>
-              <strong>Lat/Lon:</strong> ${eq.latitude.toFixed(2)}, ${eq.longitude.toFixed(2)}
             </div>
           `,
         });
@@ -460,65 +595,86 @@ function App() {
   };
 
   return (
-    <div className="argus-root">
-      <div ref={containerRef} className="argus-globe" />
+    <>
+      {!isSystemActive ? (
+        <IntroScreen onFinish={() => setIsSystemActive(true)} />
+      ) : (
+        <div className="argus-root">
+          <div ref={containerRef} className="argus-globe" />
 
-      <div className="argus-hud">
-        <div className="argus-logo">
-          <span className="argus-eye">👁️</span>
-          <div>
-            <h1>PROJECT ARGUS</h1>
-            <p className="mono">Cem olhos. Uma verdade.</p>
+          <div className="argus-hud">
+            <div className="argus-logo">
+              <span className="argus-eye">👁️</span>
+              <div>
+                <h1>PROJECT ARGUS</h1>
+                <p className="mono">Cem olhos. Uma verdade.</p>
+              </div>
+            </div>
+
+            <div className="vision-indicator">
+              <div className={`vision-dot ${isListening ? "listening" : ""}`} />
+              <span className="vision-text">
+                {isListening
+                  ? "VISION OUVINDO..."
+                  : "VISION OFFLINE (Verifique o Microfone)"}
+              </span>
+            </div>
+
+            {visionMessage && (
+              <div className="vision-message">
+                <p>{visionMessage}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="argus-status">
+            <div className="argus-status-item">
+              <span className="argus-label">STATUS</span>
+              <span className="argus-value">{status}</span>
+            </div>
+            <div className="argus-status-item">
+              <span className="argus-label">FLIGHTS</span>
+              <span className="argus-value mono">{flightCount}</span>
+            </div>
+          </div>
+
+          <div className="argus-actions">
+            <button className="argus-refresh" onClick={toggleEarthquakes}>
+              <span className="argus-btn-en">
+                {showEarthquakes ? "HIDE EARTHQUAKES" : "SHOW EARTHQUAKES"}
+              </span>
+              <span className="argus-btn-pt">
+                {showEarthquakes ? "Ocultar terremotos" : "Mostrar terremotos"}
+              </span>
+            </button>
+            <button className="argus-refresh" onClick={toggleSatellites}>
+              <span className="argus-btn-en">
+                {showSatellites ? "HIDE SATELLITES" : "SHOW SATELLITES"}
+              </span>
+              <span className="argus-btn-pt">
+                {showSatellites ? "Ocultar satélites" : "Mostrar satélites"}
+              </span>
+            </button>
+            <button className="argus-refresh" onClick={handleOrbitalView}>
+              <span className="argus-btn-en">ORBITAL VIEW</span>
+              <span className="argus-btn-pt">Visão orbital</span>
+            </button>
+            <button
+              className="argus-refresh"
+              onClick={carregarVoos}
+              disabled={loading}
+            >
+              <span className="argus-btn-en">
+                {loading ? "LOADING..." : "REFRESH FLIGHTS"}
+              </span>
+              <span className="argus-btn-pt">
+                {loading ? "Carregando..." : "Atualizar voos"}
+              </span>
+            </button>
           </div>
         </div>
-      </div>
-
-      <div className="argus-status">
-        <div className="argus-status-item">
-          <span className="argus-label">STATUS</span>
-          <span className="argus-value">{status}</span>
-        </div>
-        <div className="argus-status-item">
-          <span className="argus-label">FLIGHTS</span>
-          <span className="argus-value mono">{flightCount}</span>
-        </div>
-      </div>
-
-      <div className="argus-actions">
-        <button className="argus-refresh" onClick={toggleEarthquakes}>
-          <span className="argus-btn-en">
-            {showEarthquakes ? "HIDE EARTHQUAKES" : "SHOW EARTHQUAKES"}
-          </span>
-          <span className="argus-btn-pt">
-            {showEarthquakes ? "Ocultar terremotos" : "Mostrar terremotos"}
-          </span>
-        </button>
-        <button className="argus-refresh" onClick={toggleSatellites}>
-          <span className="argus-btn-en">
-            {showSatellites ? "HIDE SATELLITES" : "SHOW SATELLITES"}
-          </span>
-          <span className="argus-btn-pt">
-            {showSatellites ? "Ocultar satélites" : "Mostrar satélites"}
-          </span>
-        </button>
-        <button className="argus-refresh" onClick={handleOrbitalView}>
-          <span className="argus-btn-en">ORBITAL VIEW</span>
-          <span className="argus-btn-pt">Visão orbital</span>
-        </button>
-        <button
-          className="argus-refresh"
-          onClick={carregarVoos}
-          disabled={loading}
-        >
-          <span className="argus-btn-en">
-            {loading ? "LOADING..." : "REFRESH FLIGHTS"}
-          </span>
-          <span className="argus-btn-pt">
-            {loading ? "Carregando..." : "Atualizar voos"}
-          </span>
-        </button>
-      </div>
-    </div>
+      )}
+    </>
   );
 }
 
