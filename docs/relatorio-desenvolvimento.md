@@ -50,6 +50,7 @@ Todo o código é versionado via **Git** e hospedado no **GitHub**, com commits 
 | 08.8.1 | 23/10/2026 | Correção da Rotação do Modelo 3D (Eixo X)      | ✅ Concluída | 10 min         | ~5 min     |
 | 09     | 24/10/2026 | Inserir satélites orbitando em 3D no globo     | ✅ Concluída | 40 min         | ~45 min    |
 | 09.1   | 24/10/2026 | Cores dos satélites por operadora + Fallback   | ✅ Concluída | 30 min         | ~25 min    |
+| 10     | 24/10/2026 | Terremotos no Globo 3D (Círculos Pulsantes)    | ✅ Concluída | 30 min         | ~20 min    |
 
 ---
 
@@ -109,6 +110,7 @@ Todo o código é versionado via **Git** e hospedado no **GitHub**, com commits 
 | **Enriquecimento via adsbdb** | API gratuita que fornece companhia, origem e destino sem chave.                                                                          | 23/10/2026 |
 | **Modelos 3D coloridos**      | Baixar 200 modelos diferentes travaria o navegador. A solução foi usar um modelo base e aplicar cores da companhia via `ColorBlendMode`. | 23/10/2026 |
 | **Satélites como pontos**     | Modelos 3D `.glb` falhavam por bloqueio de rede. Pontos coloridos (Radar) garantem visibilidade e performance.                           | 24/10/2026 |
+| **Terremotos como círculos**  | Círculos vermelhos com tamanho dinâmico (`magnitude * 4`) permitem leitura visual imediata da intensidade sísmica.                       | 24/10/2026 |
 
 ---
 
@@ -124,7 +126,11 @@ No CesiumJS, modelos 3D padrão (`.glb`) frequentemente têm seu eixo frontal no
 
 ### 7.3 Resiliência de Software e APIs Externas
 
-A dependência de APIs públicas (como OpenSky) exige planejamento de contingência. A implementação de Cache e Fallback (Plano B) garantiu que o sistema continuasse operando e exibindo dados vitais mesmo quando a fonte externa bloqueou as requisições.
+A dependência de APIs públicas (como OpenSky) exige planejamento de contingência. A implementação de Cache e Fallback (Plano B) garantiu que o sistema continuasse operando e exibindo dados vitais mesmo quando a fonte externa bloqueou as requisições. Da mesma forma, ícones simples (pontos) mostraram-se mais confiáveis que modelos 3D pesados para satélites, dada a instabilidade de redes externas.
+
+### 7.4 Design de Interface e Sobrecarga Cognitiva
+
+A adição de múltiplas camadas (aviões, satélites, terremotos) exigiu a criação de botões independentes de toggle (ligar/desligar). Isso evita sobrecarga visual (clutter) e permite que o usuário foque na análise de uma ameaça por vez (ex: ver apenas terremotos e satélites durante um evento sísmico).
 
 ---
 
@@ -132,19 +138,19 @@ A dependência de APIs públicas (como OpenSky) exige planejamento de contingên
 
 | Métrica                     | Valor                                                         |
 | --------------------------- | ------------------------------------------------------------- |
-| Total de sessões concluídas | 20 (00 a 09.1)                                                |
-| Total de commits no GitHub  | 12+                                                           |
+| Total de sessões concluídas | 21 (00 a 10)                                                  |
+| Total de commits no GitHub  | 13+                                                           |
 | Fontes de dados integradas  | 4 (OpenSky, Celestrak, USGS, adsbdb)                          |
 | Endpoints da API            | 5 (`/`, `/health`, `/flights`, `/satellites`, `/earthquakes`) |
 | Aeronaves no globo          | 200 (ou 6 em modo Fallback)                                   |
 | Satélites no globo          | 50 (coloridos por operadora)                                  |
+| Terremotos no globo         | 100 (últimas 24h, magnitude 2.5+)                             |
 
 ---
 
 ## 9. Próximas Etapas
 
-- ✅ Sessão 09.1: Satélites coloridos e Fallback de Voos implementados.
-- 🔜 Sessão 10: Exibir terremotos no globo 3D (Círculos pulsantes).
+- ✅ Sessão 10: Terremotos exibidos como círculos pulsantes no globo 3D.
 - 🔜 Sessão 11: Implementar a IA **VISION** (Comandos de voz e respostas).
 - 🔜 Sessão 12: Documentação final do TCC e vídeo de demonstração.
 
@@ -155,4 +161,4 @@ A dependência de APIs públicas (como OpenSky) exige planejamento de contingên
 Este relatório é atualizado ao final de cada sessão e serve como fonte primária para o capítulo de Metodologia e Resultados do TCC. Todo o código-fonte está disponível no repositório oficial, com histórico completo de commits.
 
 **Última atualização:** 24/10/2026
-**Próxima atualização prevista:** após Sessão 10 (Terremotos em 3D)
+**Próxima atualização prevista:** após Sessão 11 (VISION - Inteligência Artificial)

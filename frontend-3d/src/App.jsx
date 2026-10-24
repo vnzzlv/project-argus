@@ -1,5 +1,5 @@
 /**
- * PROJECT ARGUS 3D — Aviões e Satélites com Cores por Operadora
+ * PROJECT ARGUS 3D — Aviões, Satélites e Terremotos
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -10,7 +10,6 @@ import "./App.css";
 const API_URL = "http://127.0.0.1:8000";
 const REFRESH_MS = 60000;
 
-// Cor por companhia aérea
 function corPorCompanhia(companhia) {
   if (!companhia || !companhia.icao)
     return Cesium.Color.fromCssColorString("#FFB020");
@@ -35,10 +34,8 @@ function corPorCompanhia(companhia) {
   return Cesium.Color.fromCssColorString(mapa[companhia.icao] || "#FFB020");
 }
 
-// ============ LÓGICA DE OPERADORA E CORES DOS SATÉLITES ============
 function infoPorSatelite(nome) {
   const n = nome.toUpperCase();
-
   if (n.includes("STARLINK"))
     return { empresa: "SpaceX", cor: Cesium.Color.CYAN };
   if (n.includes("ISS") || n.includes("ZARYA"))
@@ -59,7 +56,6 @@ function infoPorSatelite(nome) {
     return { empresa: "US Space Force", cor: Cesium.Color.BLUE };
   if (n.includes("GALILEO"))
     return { empresa: "ESA (Europa)", cor: Cesium.Color.ORANGE };
-
   return { empresa: "Comercial / Outra", cor: Cesium.Color.CYAN };
 }
 
@@ -87,6 +83,7 @@ function App() {
   const viewerRef = useRef(null);
   const flightsDataSourceRef = useRef(null);
   const satellitesDataSourceRef = useRef(null);
+  const earthquakesDataSourceRef = useRef(null); // Novo DataSource
 
   const flightsDataRef = useRef([]);
   const baseTimeRef = useRef(null);
@@ -95,6 +92,7 @@ function App() {
   const [status, setStatus] = useState("INICIALIZANDO...");
   const [loading, setLoading] = useState(false);
   const [showSatellites, setShowSatellites] = useState(false);
+  const [showEarthquakes, setShowEarthquakes] = useState(false);
 
   useEffect(() => {
     if (viewerRef.current) return;
@@ -140,6 +138,7 @@ function App() {
     });
     viewerRef.current = viewer;
 
+    // DataSources
     const flightsDataSource = new Cesium.CustomDataSource("flights");
     flightsDataSource.clustering.enabled = true;
     flightsDataSource.clustering.pixelRange = 40;
@@ -165,6 +164,10 @@ function App() {
     const satellitesDataSource = new Cesium.CustomDataSource("satellites");
     viewer.dataSources.add(satellitesDataSource);
     satellitesDataSourceRef.current = satellitesDataSource;
+
+    const earthquakesDataSource = new Cesium.CustomDataSource("earthquakes");
+    viewer.dataSources.add(earthquakesDataSource);
+    earthquakesDataSourceRef.current = earthquakesDataSource;
 
     carregarVoos();
     const interval = setInterval(carregarVoos, REFRESH_MS);
@@ -331,7 +334,7 @@ function App() {
 
       for (const sat of data.satelites) {
         const altMetros = sat.altitude_km * 1000;
-        const info = infoPorSatelite(sat.nome); // Pega a cor e a empresa
+        const info = infoPorSatelite(sat.nome);
 
         dataSource.entities.add({
           name: sat.nome,
@@ -340,8 +343,6 @@ function App() {
             sat.latitude,
             altMetros,
           ),
-
-          // PONTO COLORIDO POR OPERADORA
           point: {
             pixelSize: 12,
             color: info.cor,
@@ -349,8 +350,6 @@ function App() {
             outlineWidth: 2,
             disableDepthTestDistance: Number.POSITIVE_INFINITY,
           },
-
-          // LABEL DO NOME
           label: {
             text: sat.nome,
             font: "12px Inter, sans-serif",
@@ -369,14 +368,9 @@ function App() {
               <strong style="font-size:16px; color:#00E5FF;">🛰️ ${sat.nome}</strong><br/>
               <div style="font-size:12px; color:#666; margin-top:2px;">${info.empresa}</div>
               <hr style="border:none; border-top:1px solid #ddd; margin:10px 0;"/>
-              
               <strong>Altitude:</strong> ${Math.round(sat.altitude_km)} km<br/>
               <strong>Latitude:</strong> ${sat.latitude.toFixed(2)}°<br/>
-              <strong>Longitude:</strong> ${sat.longitude.toFixed(2)}°<br/>
-              
-              <div style="margin-top:10px; font-size:11px; color:#888; font-style:italic;">
-                *Mova o globo para ver sobre qual país ele está passando.
-              </div>
+              <strong>Longitude:</strong> ${sat.longitude.toFixed(2)}°
             </div>
           `,
         });
@@ -386,6 +380,75 @@ function App() {
     } catch (err) {
       console.error(err);
       setStatus("ERRO AO BUSCAR SATÉLITES");
+    }
+  };
+
+  // ============ FUNÇÃO DE CARREGAR TERREMOTOS ============
+  const toggleEarthquakes = async () => {
+    const dataSource = earthquakesDataSourceRef.current;
+    if (!dataSource) return;
+
+    if (showEarthquakes) {
+      dataSource.entities.removeAll();
+      setShowEarthquakes(false);
+      return;
+    }
+
+    try {
+      setStatus("BUSCANDO TERREMOTOS...");
+      viewerRef.current.camera.flyTo({
+        destination: Cesium.Cartesian3.fromDegrees(-50, 15, 18000000),
+        duration: 2,
+      });
+
+      const res = await fetch(
+        `${API_URL}/earthquakes?periodo=dia&magnitude=m25&limit=100`,
+      );
+      const data = await res.json();
+
+      dataSource.entities.removeAll();
+
+      for (const eq of data.terremotos) {
+        // Tamanho do ponto baseado na magnitude (M2.5 = 10px, M6.0 = 24px)
+        const tamanho = Math.max(10, eq.magnitude * 4);
+
+        dataSource.entities.add({
+          name: `Terremoto M${eq.magnitude}`,
+          position: Cesium.Cartesian3.fromDegrees(eq.longitude, eq.latitude, 0),
+          point: {
+            pixelSize: tamanho,
+            color: Cesium.Color.RED.withAlpha(0.6),
+            outlineColor: Cesium.Color.RED,
+            outlineWidth: 2,
+            disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          },
+          label: {
+            text: `M${eq.magnitude}`,
+            font: "bold 12px Inter, sans-serif",
+            fillColor: Cesium.Color.WHITE,
+            outlineColor: Cesium.Color.BLACK,
+            outlineWidth: 3,
+            style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+            pixelOffset: new Cesium.Cartesian2(0, -20),
+            disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          },
+          description: `
+            <div style="font-family: Inter, sans-serif; color:#05060A; padding:8px; min-width:240px;">
+              <strong style="font-size:16px; color:#FF0000;">🌋 Terremoto M${eq.magnitude}</strong><br/>
+              <div style="font-size:12px; color:#666; margin-top:2px;">${eq.local}</div>
+              <hr style="border:none; border-top:1px solid #ddd; margin:8px 0;"/>
+              <strong>Profundidade:</strong> ${Math.round(eq.profundidade_km)} km<br/>
+              <strong>Alerta de Tsunami:</strong> ${eq.tsunami ? "⚠️ SIM" : "Não"}<br/>
+              <strong>Lat/Lon:</strong> ${eq.latitude.toFixed(2)}, ${eq.longitude.toFixed(2)}
+            </div>
+          `,
+        });
+      }
+      setShowEarthquakes(true);
+      setStatus("ARGUS ONLINE");
+    } catch (err) {
+      console.error(err);
+      setStatus("ERRO AO BUSCAR TERREMOTOS");
     }
   };
 
@@ -422,6 +485,14 @@ function App() {
       </div>
 
       <div className="argus-actions">
+        <button className="argus-refresh" onClick={toggleEarthquakes}>
+          <span className="argus-btn-en">
+            {showEarthquakes ? "HIDE EARTHQUAKES" : "SHOW EARTHQUAKES"}
+          </span>
+          <span className="argus-btn-pt">
+            {showEarthquakes ? "Ocultar terremotos" : "Mostrar terremotos"}
+          </span>
+        </button>
         <button className="argus-refresh" onClick={toggleSatellites}>
           <span className="argus-btn-en">
             {showSatellites ? "HIDE SATELLITES" : "SHOW SATELLITES"}
