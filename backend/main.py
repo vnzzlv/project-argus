@@ -13,8 +13,20 @@ from collectors.satellites import fetch_satellites, GRUPOS
 from collectors.earthquakes import fetch_earthquakes, PERIODOS, MAGNITUDES
 from collectors.flight_enricher import enrich_flights
 
-# ============ CACHE DE VOOS (Evita bloqueio da OpenSky) ============
+# ============ CACHE DE VOOS ============
 _flights_cache = {"data": None, "timestamp": None}
+
+# ============ DADOS DE FALLBACK (PLANO B PARA O TCC) ============
+# Se a OpenSky bloquear o IP, o sistema exibe estes aviões para a banca.
+_FALLBACK_FLIGHTS = [
+    {"icao24": "e8027c", "callsign": "LPE2237", "pais_origem": "Peru", "longitude": -78.325, "latitude": -9.5512, "altitude_m": 12054.84, "velocidade_ms": 236.07, "heading": 154.16, "no_chao": False, "companhia_aerea": {"nome": "LAN Peru", "iata": "LP", "icao": "LPE"}, "origem": {"iata": "PIU", "cidade": "Piura"}, "destino": {"iata": "LIM", "cidade": "Lima"}},
+    {"icao24": "e8027b", "callsign": "LAN533", "pais_origem": "Chile", "longitude": -79.9291, "latitude": 26.7323, "altitude_m": 12001.5, "velocidade_ms": 256.62, "heading": 173.9, "no_chao": False, "companhia_aerea": {"nome": "LAN Airlines", "iata": "LA", "icao": "LAN"}, "origem": {"iata": "JFK", "cidade": "Nova York"}, "destino": {"iata": "SCL", "cidade": "Santiago"}},
+    {"icao24": "ab1644", "callsign": "UAL1508", "pais_origem": "EUA", "longitude": -118.3591, "latitude": 34.2116, "altitude_m": 10000, "velocidade_ms": 240.0, "heading": 309.38, "no_chao": False, "companhia_aerea": {"nome": "United Airlines", "iata": "UA", "icao": "UAL"}, "origem": {"iata": "IAD", "cidade": "Washington"}, "destino": {"iata": "EWR", "cidade": "Newark"}},
+    {"icao24": "a1b2c3", "callsign": "GLO1295", "pais_origem": "Brasil", "longitude": -46.6333, "latitude": -23.5505, "altitude_m": 11000, "velocidade_ms": 250.0, "heading": 45.0, "no_chao": False, "companhia_aerea": {"nome": "GOL Linhas Aéreas", "iata": "G3", "icao": "GLO"}, "origem": {"iata": "CGH", "cidade": "São Paulo"}, "destino": {"iata": "BSB", "cidade": "Brasília"}},
+    {"icao24": "d4e5f6", "callsign": "AFR443", "pais_origem": "França", "longitude": 2.3522, "latitude": 48.8566, "altitude_m": 10500, "velocidade_ms": 220.0, "heading": 180.0, "no_chao": False, "companhia_aerea": {"nome": "Air France", "iata": "AF", "icao": "AFR"}, "origem": {"iata": "CDG", "cidade": "Paris"}, "destino": {"iata": "GIG", "cidade": "Rio de Janeiro"}},
+    {"icao24": "g7h8i9", "callsign": "UAE202", "pais_origem": "Emirados Árabes", "longitude": 55.2708, "latitude": 25.2048, "altitude_m": 11500, "velocidade_ms": 260.0, "heading": 270.0, "no_chao": False, "companhia_aerea": {"nome": "Emirates", "iata": "EK", "icao": "UAE"}, "origem": {"iata": "DXB", "cidade": "Dubai"}, "destino": {"iata": "JFK", "cidade": "Nova York"}}
+]
+
 
 app = FastAPI(
     title="PROJECT ARGUS API",
@@ -64,44 +76,49 @@ async def flights(
     limit: int = Query(100, ge=1, le=500, description="Número máximo de voos"),
     brazil: bool = Query(False, description="Filtrar apenas voos sobre o Brasil"),
 ):
-    """Retorna voos em tempo real (com cache de 60s para evitar bloqueio da OpenSky)."""
+    """Retorna voos em tempo real (com cache e fallback para o TCC)."""
     global _flights_cache
     agora = datetime.now(timezone.utc)
 
-    # 1. Se tem cache e ele é recente (menos de 60s), devolve o cache
+    # 1. Se tem cache recente (menos de 60s), devolve o cache
     if _flights_cache["data"] and _flights_cache["timestamp"]:
         if (agora - _flights_cache["timestamp"]).total_seconds() < 60:
             return _flights_cache["data"]
 
-    # 2. Se não tem cache, tenta buscar na OpenSky
     bbox = None
     if brazil:
         bbox = {"lamin": -35.0, "lomin": -75.0, "lamax": 6.0, "lomax": -34.0}
 
     try:
+        # 2. Tenta buscar na OpenSky
         dados = await fetch_flights(limit=limit, bbox=bbox)
         
-        # Tenta enriquecer, mas se a adsbdb falhar, não quebra o sistema
         try:
             dados["voos"] = await enrich_flights(dados.get("voos", []), max_enriquecer=80)
         except Exception as e:
             print(f"Aviso: Erro ao enriquecer voos: {e}")
 
-        # Salva no cache
+        # Salva no cache de sucesso
         _flights_cache["data"] = dados
         _flights_cache["timestamp"] = agora
         return dados
 
-    except httpx.HTTPStatusError as e:
-        # 3. Se a OpenSky der erro, mas a gente tem um cache velho, devolve o cache velho
-        if _flights_cache["data"]:
-            print("Aviso: OpenSky bloqueou. Retornando cache antigo.")
-            return _flights_cache["data"]
-        raise HTTPException(status_code=502, detail=f"Erro OpenSky: {e}")
     except Exception as e:
-        if _flights_cache["data"]:
-            return _flights_cache["data"]
-        raise HTTPException(status_code=500, detail=f"Erro interno: {e}")
+        print(f"ERRO: Falha na OpenSky ({e}). Usando dados de fallback do TCC.")
+        
+        # 3. PLANO B: Se a OpenSky falhar, entrega os aviões de segurança
+        dados_fallback = {
+            "fonte": "Fallback Local (Proteção TCC)",
+            "total_disponivel": len(_FALLBACK_FLIGHTS),
+            "total_retornado": len(_FALLBACK_FLIGHTS),
+            "timestamp": agora.isoformat(),
+            "voos": _FALLBACK_FLIGHTS[:limit]
+        }
+        
+        # Salva o fallback no cache para não tentar na OpenSky toda hora
+        _flights_cache["data"] = dados_fallback
+        _flights_cache["timestamp"] = agora
+        return dados_fallback
 
 
 @app.get("/satellites")

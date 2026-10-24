@@ -1,5 +1,5 @@
 /**
- * PROJECT ARGUS 3D — Aviões e Satélites
+ * PROJECT ARGUS 3D — Aviões e Satélites com Cores por Operadora
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -10,6 +10,7 @@ import "./App.css";
 const API_URL = "http://127.0.0.1:8000";
 const REFRESH_MS = 60000;
 
+// Cor por companhia aérea
 function corPorCompanhia(companhia) {
   if (!companhia || !companhia.icao)
     return Cesium.Color.fromCssColorString("#FFB020");
@@ -32,6 +33,34 @@ function corPorCompanhia(companhia) {
     SWR: "#E30613",
   };
   return Cesium.Color.fromCssColorString(mapa[companhia.icao] || "#FFB020");
+}
+
+// ============ LÓGICA DE OPERADORA E CORES DOS SATÉLITES ============
+function infoPorSatelite(nome) {
+  const n = nome.toUpperCase();
+
+  if (n.includes("STARLINK"))
+    return { empresa: "SpaceX", cor: Cesium.Color.CYAN };
+  if (n.includes("ISS") || n.includes("ZARYA"))
+    return { empresa: "NASA/ESA/JAXA", cor: Cesium.Color.WHITE };
+  if (
+    n.includes("CSS") ||
+    n.includes("SHENZHOU") ||
+    n.includes("TIANZHOU") ||
+    n.includes("TIANHE") ||
+    n.includes("WENTIAN")
+  )
+    return { empresa: "CNSA (China)", cor: Cesium.Color.GOLD };
+  if (n.includes("SOYUZ") || n.includes("PROGRESS") || n.includes("NAUKA"))
+    return { empresa: "Roscosmos (Rússia)", cor: Cesium.Color.RED };
+  if (n.includes("ONEWEB"))
+    return { empresa: "OneWeb", cor: Cesium.Color.LIGHTGREEN };
+  if (n.includes("GPS") || n.includes("NAVSTAR"))
+    return { empresa: "US Space Force", cor: Cesium.Color.BLUE };
+  if (n.includes("GALILEO"))
+    return { empresa: "ESA (Europa)", cor: Cesium.Color.ORANGE };
+
+  return { empresa: "Comercial / Outra", cor: Cesium.Color.CYAN };
 }
 
 function moverPosicao(lon, lat, headingDeg, distanciaKm) {
@@ -302,6 +331,7 @@ function App() {
 
       for (const sat of data.satelites) {
         const altMetros = sat.altitude_km * 1000;
+        const info = infoPorSatelite(sat.nome); // Pega a cor e a empresa
 
         dataSource.entities.add({
           name: sat.nome,
@@ -311,37 +341,42 @@ function App() {
             altMetros,
           ),
 
-          // PONTO DE RADAR CIANO (À PROVA DE FALHAS)
+          // PONTO COLORIDO POR OPERADORA
           point: {
-            pixelSize: 10, // Tamanho do ponto
-            color: Cesium.Color.CYAN, // Cor ciano brilhante
-            outlineColor: Cesium.Color.BLACK, // Borda preta para destacar
+            pixelSize: 12,
+            color: info.cor,
+            outlineColor: Cesium.Color.BLACK,
             outlineWidth: 2,
-            disableDepthTestDistance: Number.POSITIVE_INFINITY, // Não some atrás da Terra
+            disableDepthTestDistance: Number.POSITIVE_INFINITY,
           },
 
-          // LABEL COM O NOME DO SATÉLITE
+          // LABEL DO NOME
           label: {
             text: sat.nome,
             font: "12px Inter, sans-serif",
-            fillColor: Cesium.Color.CYAN,
+            fillColor: info.cor,
             outlineColor: Cesium.Color.BLACK,
             outlineWidth: 3,
             style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-            pixelOffset: new Cesium.Cartesian2(0, -20),
+            pixelOffset: new Cesium.Cartesian2(0, -25),
             showBackground: true,
             backgroundColor:
               Cesium.Color.fromCssColorString("#05060A").withAlpha(0.8),
             disableDepthTestDistance: Number.POSITIVE_INFINITY,
           },
           description: `
-            <div style="font-family: Inter; padding: 8px;">
-              <strong style="color: #00E5FF; font-size: 16px;">🛰️ ${sat.nome}</strong><br/>
-              <hr style="border:none; border-top:1px solid #ccc; margin: 8px 0;"/>
-              <strong>NORAD ID:</strong> ${sat.norad_id}<br/>
+            <div style="font-family: Inter, sans-serif; color:#05060A; padding:10px; min-width:260px;">
+              <strong style="font-size:16px; color:#00E5FF;">🛰️ ${sat.nome}</strong><br/>
+              <div style="font-size:12px; color:#666; margin-top:2px;">${info.empresa}</div>
+              <hr style="border:none; border-top:1px solid #ddd; margin:10px 0;"/>
+              
               <strong>Altitude:</strong> ${Math.round(sat.altitude_km)} km<br/>
-              <strong>Lat:</strong> ${sat.latitude}°<br/>
-              <strong>Lon:</strong> ${sat.longitude}°
+              <strong>Latitude:</strong> ${sat.latitude.toFixed(2)}°<br/>
+              <strong>Longitude:</strong> ${sat.longitude.toFixed(2)}°<br/>
+              
+              <div style="margin-top:10px; font-size:11px; color:#888; font-style:italic;">
+                *Mova o globo para ver sobre qual país ele está passando.
+              </div>
             </div>
           `,
         });
