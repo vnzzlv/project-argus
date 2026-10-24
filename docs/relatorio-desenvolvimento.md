@@ -20,13 +20,7 @@ O ARGUS é um sistema de Inteligência de Fontes Abertas (OSINT) para visualiza�
 
 ## 2. Metodologia de Trabalho
 
-O desenvolvimento segue um modelo **iterativo-incremental**, dividido em sessões. Cada sessão é registrada com:
-
-- Objetivo
-- Ferramentas utilizadas
-- Erros e soluções
-- Aprendizados
-- Tempo gasto (estimado vs. real)
+O desenvolvimento segue um modelo **iterativo-incremental**, dividido em sessões. Cada sessão é registrada com: Objetivo, Ferramentas, Erros/Soluções, Aprendizados e Tempo.
 
 Todo o código é versionado via **Git** e hospedado no **GitHub**, com commits descritivos. Para garantir a sincronização contínua entre o PC de casa e o PC da escola, foi criado um atalho personalizado no Git (`git sync`), que automatiza o `pull`, `add`, `commit` e `push`.
 
@@ -54,23 +48,27 @@ Todo o código é versionado via **Git** e hospedado no **GitHub**, com commits 
 | 08.7   | 23/10/2026 | Cores por Companhia e Popups                   | ✅ Concluída | 20 min         | ~15 min    |
 | 08.8   | 23/10/2026 | Modelos 3D e Rastro Atrás do Avião             | ✅ Concluída | 30 min         | ~20 min    |
 | 08.8.1 | 23/10/2026 | Correção da Rotação do Modelo 3D (Eixo X)      | ✅ Concluída | 10 min         | ~5 min     |
+| 09     | 24/10/2026 | Inserir satélites orbitando em 3D no globo     | ✅ Concluída | 40 min         | ~45 min    |
+| 09.1   | 24/10/2026 | Cores dos satélites por operadora + Fallback   | ✅ Concluída | 30 min         | ~25 min    |
 
 ---
 
 ## 4. Registro Detalhado de Erros e Soluções
 
-| #   | Sessão | Erro                                       | Causa                                               | Solução Aplicada                              |
-| --- | ------ | ------------------------------------------ | --------------------------------------------------- | --------------------------------------------- |
-| 01  | 01     | `0x80070659` (Python)                      | Instalação bloqueada por política do Windows        | Executar instalador como Administrador        |
-| 02  | 01     | `$'\302\226d': command not found`          | Caractere invisível Unicode no Git Bash             | Digitar comandos manualmente                  |
-| 03  | 01     | `cd: too many arguments`                   | Nome de usuário com espaço (`acxell PC`)            | Usar `~` ou aspas nos caminhos                |
-| 04  | 02     | `Password authentication is not supported` | GitHub aboliu senhas comuns                         | Autenticação via OAuth (navegador/celular)    |
-| 05  | 08     | Erro de CORS no Globo 3D                   | Porta 5174 não estava na lista do backend           | Adicionar portas 5173 e 5174 no CORS          |
-| 06  | 08     | `Worker failed to load` (Vite)             | Incompatibilidade de Web Workers (Vite vs MapLibre) | Configurar `worker: { format: 'es' }` no Vite |
-| 07  | 08     | `API KEY REQUIRED` no mapa                 | CartoDB passou a exigir chave                       | Troca para ESRI World Imagery (gratuito)      |
-| 08  | 08.3   | Falha de compilação C++ no PC da escola    | Python 3.15 sem binários prontos                    | Instalar Python 3.12 isolado via `uv`         |
-| 09  | 08.4   | `WinError 10013`                           | Firewall bloqueou a porta 8000                      | Rodar servidor na porta 8080                  |
-| 10  | 08.8.1 | Avião voando "de lado"                     | Modelo 3D original aponta para o Eixo Leste         | Subtrair 90º (`heading - 90`) na orientação   |
+| #   | Sessão | Erro                                       | Causa                                                          | Solução Aplicada                                          |
+| --- | ------ | ------------------------------------------ | -------------------------------------------------------------- | --------------------------------------------------------- |
+| 01  | 01     | `0x80070659` (Python)                      | Instalação bloqueada por política do Windows                   | Executar instalador como Administrador                    |
+| 02  | 01     | `$'\302\226d': command not found`          | Caractere invisível Unicode no Git Bash                        | Digitar comandos manualmente                              |
+| 03  | 01     | `cd: too many arguments`                   | Nome de usuário com espaço (`acxell PC`)                       | Usar `~` ou aspas nos caminhos                            |
+| 04  | 02     | `Password authentication is not supported` | GitHub aboliu senhas comuns                                    | Autenticação via OAuth (navegador/celular)                |
+| 05  | 08     | Erro de CORS no Globo 3D                   | Porta 5174 não estava na lista do backend                      | Adicionar portas 5173 e 5174 no CORS                      |
+| 06  | 08     | `Worker failed to load` (Vite)             | Incompatibilidade de Web Workers (Vite vs MapLibre)            | Configurar `worker: { format: 'es' }` no Vite             |
+| 07  | 08     | `API KEY REQUIRED` no mapa                 | CartoDB passou a exigir chave                                  | Troca para ESRI World Imagery (gratuito)                  |
+| 08  | 08.3   | Falha de compilação C++ no PC da escola    | Python 3.15 sem binários prontos                               | Instalar Python 3.12 isolado via `uv`                     |
+| 09  | 08.4   | `WinError 10013`                           | Firewall bloqueou a porta 8000                                 | Rodar servidor na porta 8080                              |
+| 10  | 08.8.1 | Avião voando "de lado"                     | Modelo 3D original aponta para o Eixo Leste                    | Subtrair 90º (`heading - 90`) na orientação               |
+| 11  | 09     | `502 Bad Gateway` (OpenSky)                | Limite de requisições da API pública atingido (bloqueio de IP) | Implementação de Cache (60s) e Fallback com dados locais  |
+| 12  | 09     | Modelo 3D do satélite não carrega          | Navegador bloqueia download de modelos `.glb` de certas redes  | Troca de modelo 3D por pontos coloridos (Radar Blips/HUD) |
 
 ---
 
@@ -110,6 +108,7 @@ Todo o código é versionado via **Git** e hospedado no **GitHub**, com commits 
 | **Uso do CesiumJS**           | Melhor biblioteca open-source para globo 3D e modelos `.glb`.                                                                            | 20/10/2026 |
 | **Enriquecimento via adsbdb** | API gratuita que fornece companhia, origem e destino sem chave.                                                                          | 23/10/2026 |
 | **Modelos 3D coloridos**      | Baixar 200 modelos diferentes travaria o navegador. A solução foi usar um modelo base e aplicar cores da companhia via `ColorBlendMode`. | 23/10/2026 |
+| **Satélites como pontos**     | Modelos 3D `.glb` falhavam por bloqueio de rede. Pontos coloridos (Radar) garantem visibilidade e performance.                           | 24/10/2026 |
 
 ---
 
@@ -123,9 +122,9 @@ A experiência no PC da escola mostrou a importância de ambientes isolados. O u
 
 No CesiumJS, modelos 3D padrão (`.glb`) frequentemente têm seu eixo frontal no Leste (X), enquanto dados de aviação usam o Norte (Y). A conversão matemática (`heading - 90`) foi essencial para alinhar a física do voo à representação visual.
 
-### 7.3 Integração de Múltiplas APIs (OSINT)
+### 7.3 Resiliência de Software e APIs Externas
 
-O ARGUS consome com sucesso OpenSky (posições), adsbdb (rotas) e Celestrak (órbitas), provando que é possível construir uma ferramenta de monitoramento global usando apenas dados públicos e gratuitos.
+A dependência de APIs públicas (como OpenSky) exige planejamento de contingência. A implementação de Cache e Fallback (Plano B) garantiu que o sistema continuasse operando e exibindo dados vitais mesmo quando a fonte externa bloqueou as requisições.
 
 ---
 
@@ -133,20 +132,19 @@ O ARGUS consome com sucesso OpenSky (posições), adsbdb (rotas) e Celestrak (ó
 
 | Métrica                     | Valor                                                         |
 | --------------------------- | ------------------------------------------------------------- |
-| Total de sessões concluídas | 18 (00 a 08.8.1)                                              |
-| Total de commits no GitHub  | 10+                                                           |
+| Total de sessões concluídas | 20 (00 a 09.1)                                                |
+| Total de commits no GitHub  | 12+                                                           |
 | Fontes de dados integradas  | 4 (OpenSky, Celestrak, USGS, adsbdb)                          |
 | Endpoints da API            | 5 (`/`, `/health`, `/flights`, `/satellites`, `/earthquakes`) |
-| Aeronaves no globo          | 200 (com modelo 3D, cor e rota)                               |
-| Satélites disponíveis (API) | ~10.690                                                       |
+| Aeronaves no globo          | 200 (ou 6 em modo Fallback)                                   |
+| Satélites no globo          | 50 (coloridos por operadora)                                  |
 
 ---
 
 ## 9. Próximas Etapas
 
-- ✅ Sessão 08.8: Modelos 3D de aviões com rastro e cores.
-- 🔜 Sessão 09: Inserir satélites orbitando em 3D no globo (CesiumJS).
-- 🔜 Sessão 10: Exibir terremotos no globo 3D.
+- ✅ Sessão 09.1: Satélites coloridos e Fallback de Voos implementados.
+- 🔜 Sessão 10: Exibir terremotos no globo 3D (Círculos pulsantes).
 - 🔜 Sessão 11: Implementar a IA **VISION** (Comandos de voz e respostas).
 - 🔜 Sessão 12: Documentação final do TCC e vídeo de demonstração.
 
@@ -156,5 +154,5 @@ O ARGUS consome com sucesso OpenSky (posições), adsbdb (rotas) e Celestrak (ó
 
 Este relatório é atualizado ao final de cada sessão e serve como fonte primária para o capítulo de Metodologia e Resultados do TCC. Todo o código-fonte está disponível no repositório oficial, com histórico completo de commits.
 
-**Última atualização:** 23/10/2026
-**Próxima atualização prevista:** após Sessão 09 (Satélites em 3D)
+**Última atualização:** 24/10/2026
+**Próxima atualização prevista:** após Sessão 10 (Terremotos em 3D)
