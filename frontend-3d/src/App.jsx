@@ -1,5 +1,5 @@
 /**
- * PROJECT ARGUS 3D — VISION (Inteligência Artificial Gemini)
+ * PROJECT ARGUS 3D — VISION (Groq IA + Edge TTS)
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -83,6 +83,7 @@ export default function App() {
   const baseTimeRef = useRef(null);
   const audioRef = useRef(null);
   const recognitionRef = useRef(null);
+  const visionAudioRef = useRef(null); // Ref para o áudio da IA
 
   const [isSystemActive, setIsSystemActive] = useState(false);
   const [flightCount, setFlightCount] = useState(0);
@@ -102,29 +103,40 @@ export default function App() {
     stateRef.current = { flightCount, showSatellites, showEarthquakes };
   }, [flightCount, showSatellites, showEarthquakes]);
 
-  const visionFalar = (texto) => {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
+  // ============ NOVA FUNÇÃO DE VOZ (EDGE TTS) ============
+  const visionFalar = async (texto) => {
+    if (!texto) return;
+    setVisionMessage(texto);
     setIsSpeaking(true);
 
-    const utterance = new SpeechSynthesisUtterance(texto);
-    utterance.lang = "pt-BR";
-    utterance.rate = 1.0;
-    utterance.pitch = 0.9;
-    utterance.onend = () => setIsSpeaking(false);
+    try {
+      // Chama o backend para gerar a voz neural
+      const res = await fetch(`${API_URL}/vision/speak`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texto: texto }),
+      });
 
-    const voices = window.speechSynthesis.getVoices();
-    const vozMasc = voices.find(
-      (v) =>
-        v.lang === "pt-BR" &&
-        (v.name.includes("Daniel") ||
-          v.name.includes("Antonio") ||
-          v.name.includes("Male")),
-    );
-    if (vozMasc) utterance.voice = vozMasc;
+      if (res.ok) {
+        const blob = await res.blob();
+        const audioUrl = URL.createObjectURL(blob);
 
-    window.speechSynthesis.speak(utterance);
-    setVisionMessage(texto);
+        if (visionAudioRef.current) {
+          visionAudioRef.current.pause();
+        }
+
+        visionAudioRef.current = new Audio(audioUrl);
+
+        // Quando o áudio terminar de tocar, para a animação da bolinha
+        visionAudioRef.current.onended = () => setIsSpeaking(false);
+        visionAudioRef.current.play();
+      } else {
+        setIsSpeaking(false);
+      }
+    } catch (error) {
+      console.error("Erro ao tocar áudio:", error);
+      setIsSpeaking(false);
+    }
   };
 
   const tocarTrilha = (numero) => {
@@ -164,7 +176,8 @@ export default function App() {
   };
 
   const processarComando = async (comando) => {
-    if (!comando.trim() || window.speechSynthesis.speaking) return;
+    // Agora usa o estado 'isSpeaking' em vez do window.speechSynthesis
+    if (!comando.trim() || isSpeaking) return;
     const cmd = comando.toLowerCase().trim();
     setStatus("PROCESSANDO...");
 
@@ -563,6 +576,7 @@ export default function App() {
               </div>
             )}
           </div>
+
           <div className="argus-status">
             <div className="argus-status-item">
               <span className="argus-label">STATUS</span>
@@ -573,6 +587,7 @@ export default function App() {
               <span className="argus-value mono">{flightCount}</span>
             </div>
           </div>
+
           <div
             style={{
               position: "absolute",
@@ -622,6 +637,7 @@ export default function App() {
               </button>
             </form>
           </div>
+
           <div className="argus-actions">
             <button className="argus-refresh" onClick={toggleEarthquakes}>
               <span className="argus-btn-en">
