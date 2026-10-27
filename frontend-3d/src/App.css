@@ -151,3 +151,76 @@
   font-family: "Orbitron", sans-serif;
   font-weight: 700;
 }
+
+/* =========================================
+   ANIMAÇÃO DO VISION (PASSO 2 ADICIONADO AQUI)
+   ========================================= */
+
+.vision-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 176, 32, 0.3);
+}
+
+.vision-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #8a8f98;
+  transition: all 0.3s ease;
+}
+
+.vision-dot.listening {
+  background-color: #00ffa3; /* Verde */
+  box-shadow: 0 0 10px #00ffa3;
+  animation: pulse 1.5s infinite;
+}
+
+.vision-dot.speaking {
+  background-color: #ffb020; /* Laranja */
+  box-shadow: 0 0 10px #ffb020;
+  animation: pulse 0.4s infinite;
+}
+
+.vision-text {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  color: #8a8f98;
+  letter-spacing: 1px;
+}
+
+.vision-message {
+  margin-top: 10px;
+  background: rgba(255, 176, 32, 0.1);
+  border-left: 3px solid #ffb020;
+  padding: 8px 12px;
+  border-radius: 4px;
+  max-width: 300px;
+}
+
+.vision-message p {
+  font-family: "Inter", sans-serif;
+  font-size: 12px;
+  color: #ffb020;
+  margin: 0;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 176, 32, 0.7);
+  }
+  70% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 10px rgba(255, 176, 32, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 176, 32, 0);
+  }
+}

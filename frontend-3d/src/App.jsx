@@ -1,5 +1,5 @@
 /**
- * PROJECT ARGUS 3D — Aviões, Satélites, Terremotos e VISION
+ * PROJECT ARGUS 3D — VISION (Inteligência Artificial Gemini)
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -9,7 +9,7 @@ import "./App.css";
 import IntroScreen from "./IntroScreen";
 
 const API_URL = "http://127.0.0.1:8000";
-const REFRESH_MS = 60000;
+const REFRESH_MS = 900000;
 
 function corPorCompanhia(companhia) {
   if (!companhia || !companhia.icao)
@@ -51,13 +51,7 @@ function infoPorSatelite(nome) {
     return { empresa: "CNSA (China)", cor: Cesium.Color.GOLD };
   if (n.includes("SOYUZ") || n.includes("PROGRESS") || n.includes("NAUKA"))
     return { empresa: "Roscosmos (Rússia)", cor: Cesium.Color.RED };
-  if (n.includes("ONEWEB"))
-    return { empresa: "OneWeb", cor: Cesium.Color.LIGHTGREEN };
-  if (n.includes("GPS") || n.includes("NAVSTAR"))
-    return { empresa: "US Space Force", cor: Cesium.Color.BLUE };
-  if (n.includes("GALILEO"))
-    return { empresa: "ESA (Europa)", cor: Cesium.Color.ORANGE };
-  return { empresa: "Comercial / Outra", cor: Cesium.Color.CYAN };
+  return { empresa: "Outra", cor: Cesium.Color.CYAN };
 }
 
 function moverPosicao(lon, lat, headingDeg, distanciaKm) {
@@ -79,15 +73,16 @@ function moverPosicao(lon, lat, headingDeg, distanciaKm) {
   return { lon: Cesium.Math.toDegrees(lon2), lat: Cesium.Math.toDegrees(lat2) };
 }
 
-function App() {
+export default function App() {
   const containerRef = useRef(null);
   const viewerRef = useRef(null);
   const flightsDataSourceRef = useRef(null);
   const satellitesDataSourceRef = useRef(null);
   const earthquakesDataSourceRef = useRef(null);
-
   const flightsDataRef = useRef([]);
   const baseTimeRef = useRef(null);
+  const audioRef = useRef(null);
+  const recognitionRef = useRef(null);
 
   const [isSystemActive, setIsSystemActive] = useState(false);
   const [flightCount, setFlightCount] = useState(0);
@@ -97,41 +92,54 @@ function App() {
   const [showEarthquakes, setShowEarthquakes] = useState(false);
 
   const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [visionMessage, setVisionMessage] = useState("");
-  const audioRef = useRef(null);
+  const [currentTrack, setCurrentTrack] = useState("");
+  const [textInput, setTextInput] = useState("");
+
+  const stateRef = useRef({ flightCount, showSatellites, showEarthquakes });
+  useEffect(() => {
+    stateRef.current = { flightCount, showSatellites, showEarthquakes };
+  }, [flightCount, showSatellites, showEarthquakes]);
 
   const visionFalar = (texto) => {
     if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    setIsSpeaking(true);
+
     const utterance = new SpeechSynthesisUtterance(texto);
     utterance.lang = "pt-BR";
     utterance.rate = 1.0;
     utterance.pitch = 0.9;
+    utterance.onend = () => setIsSpeaking(false);
 
     const voices = window.speechSynthesis.getVoices();
-    const vozMasculina = voices.find(
+    const vozMasc = voices.find(
       (v) =>
         v.lang === "pt-BR" &&
         (v.name.includes("Daniel") ||
           v.name.includes("Antonio") ||
           v.name.includes("Male")),
     );
-    if (vozMasculina) utterance.voice = vozMasculina;
+    if (vozMasc) utterance.voice = vozMasc;
 
     window.speechSynthesis.speak(utterance);
     setVisionMessage(texto);
   };
 
-  const tocarMusica = (faixa = 1) => {
-    if (audioRef.current) {
-      audioRef.current.pause();
+  const tocarTrilha = (numero) => {
+    const nomeArquivo = `/trilha${numero}.mp3`;
+    if (currentTrack === nomeArquivo && audioRef.current) {
+      audioRef.current.play().catch((e) => console.log(e));
+      return;
     }
-    audioRef.current = new Audio(`/trilha${faixa}.mp3`);
-    audioRef.current.volume = 0.4;
+    if (audioRef.current) audioRef.current.pause();
+    audioRef.current = new Audio(nomeArquivo);
+    audioRef.current.volume = 0.15;
     audioRef.current.loop = true;
-    audioRef.current
-      .play()
-      .catch((e) => console.log("Erro ao tocar áudio:", e));
-    visionFalar(`Iniciando trilha ${faixa}, senhor.`);
+    audioRef.current.play().catch((e) => console.log("Erro áudio:", e));
+    setCurrentTrack(nomeArquivo);
+    visionFalar(`Iniciando trilha sonora ${numero}, senhor.`);
   };
 
   const pararMusica = () => {
@@ -139,100 +147,118 @@ function App() {
     visionFalar("Silenciando trilha sonora, senhor.");
   };
 
-  const ajustarVolumePorComando = (comando) => {
-    const match = comando.match(/\d+/);
-    if (match) {
-      const volumePorcentagem = parseInt(match[0], 10);
-      if (volumePorcentagem >= 0 && volumePorcentagem <= 100) {
-        if (audioRef.current) {
-          audioRef.current.volume = volumePorcentagem / 100;
-          visionFalar(
-            `Volume ajustado para ${volumePorcentagem} por cento, senhor.`,
+  const filtrarVoos = (icaoCode) => {
+    const dataSource = flightsDataSourceRef.current;
+    if (!dataSource) return;
+    dataSource.entities.values.forEach((entity) => {
+      if (entity.model) {
+        if (!icaoCode) entity.show = true;
+        else {
+          const original = flightsDataRef.current.find(
+            (f) => `voo-${flightsDataRef.current.indexOf(f)}` === entity.id,
           );
-        } else {
-          visionFalar("Nenhuma trilha sonora está ativa no momento, senhor.");
+          entity.show = original && original.companhia_aerea?.icao === icaoCode;
         }
       }
-    }
+    });
   };
 
-  // ============ ESCUTA CONTÍNUA (CORRIGIDA) ============
-  useEffect(() => {
-    if (!isSystemActive) return;
+  const processarComando = async (comando) => {
+    if (!comando.trim() || window.speechSynthesis.speaking) return;
+    const cmd = comando.toLowerCase().trim();
+    setStatus("PROCESSANDO...");
 
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      setVisionMessage("Navegador não suporta reconhecimento de voz.");
+    if (cmd.includes("modo viana")) {
+      tocarTrilha(1);
+      setStatus("ARGUS ONLINE");
+      return;
+    }
+    if (cmd.includes("silêncio") || cmd.includes("parar música")) {
+      pararMusica();
+      setStatus("ARGUS ONLINE");
+      return;
+    }
+    if (cmd.includes("ativar olho de deus")) {
+      visionFalar("Ativando todas as camadas, senhor.");
+      if (!showSatellites) toggleSatellites();
+      if (!showEarthquakes) toggleEarthquakes();
+      setStatus("ARGUS ONLINE");
       return;
     }
 
-    const recognition = new SpeechRecognition();
-    recognition.lang = "pt-BR";
-    recognition.continuous = true;
-    recognition.interimResults = false;
-
-    recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => {
-      setIsListening(false);
-      setTimeout(() => {
-        try {
-          recognition.start();
-        } catch (e) {}
-      }, 1000);
-    };
-    recognition.onerror = (e) => {
-      console.error("Erro no mic:", e.error);
-      setIsListening(false);
-    };
-
-    recognition.onresult = (event) => {
-      const ultimo = event.results.length - 1;
-      const comando = event.results[ultimo][0].transcript.toLowerCase();
-      console.log("VISION ouviu:", comando);
-
-      if (
-        comando.includes("modo viana") ||
-        comando.includes("tocar música") ||
-        comando.includes("trilha 1")
-      ) {
-        tocarMusica(1);
-      } else if (comando.includes("trilha 2")) {
-        tocarMusica(2);
-      } else if (comando.includes("trilha 3")) {
-        tocarMusica(3);
-      } else if (comando.includes("trilha 4")) {
-        tocarMusica(4);
-      } else if (
-        comando.includes("silêncio") ||
-        comando.includes("parar música") ||
-        comando.includes("pausar")
-      ) {
-        pararMusica();
-      } else if (comando.includes("volume")) {
-        ajustarVolumePorComando(comando);
-      } else if (comando.includes("ativar olho de deus")) {
-        visionFalar("Ativando todas as camadas de dados, senhor.");
-        if (!showSatellites) toggleSatellites();
-        if (!showEarthquakes) toggleEarthquakes();
-      }
-    };
-
     try {
-      recognition.start();
-    } catch (e) {
-      console.log("Erro ao iniciar mic", e);
+      const {
+        flightCount: currentFlights,
+        showSatellites: currentSats,
+        showEarthquakes: currentQuakes,
+      } = stateRef.current;
+      const contexto = `Temos ${currentFlights} voos. Satélites: ${currentSats ? "ligados" : "desligados"}. Terremotos: ${currentQuakes ? "ligados" : "desligados"}.`;
+
+      const res = await fetch(`${API_URL}/vision/ask`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pergunta: cmd, contexto: contexto }),
+      });
+
+      if (!res.ok) throw new Error("Falha na API");
+      const data = await res.json();
+
+      if (data.resposta) visionFalar(data.resposta);
+
+      if (data.acao === "FILTRAR_GOL") filtrarVoos("GLO");
+      else if (data.acao === "FILTRAR_LATAM") filtrarVoos("TAM");
+      else if (data.acao === "FILTRAR_AZU") filtrarVoos("AZU");
+      else if (data.acao === "MOSTRAR_AVIOES") filtrarVoos(null);
+      else if (data.acao === "MOSTRAR_TERREMOTOS" && !showEarthquakes)
+        toggleEarthquakes();
+      else if (data.acao === "MOSTRAR_SATELITES" && !showSatellites)
+        toggleSatellites();
+
+      setStatus("ARGUS ONLINE");
+    } catch (error) {
+      console.error(error);
+      visionFalar("Desculpe, senhor. Meu núcleo neural está offline.");
+      setStatus("ARGUS ONLINE");
     }
+  };
 
+  useEffect(() => {
+    if (!isSystemActive) return;
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+
+    if (!recognitionRef.current) {
+      const recognition = new SR();
+      recognition.lang = "pt-BR";
+      recognition.continuous = true;
+      recognition.interimResults = false;
+      recognition.onstart = () => setIsListening(true);
+      recognition.onend = () => {
+        setIsListening(false);
+        setTimeout(() => {
+          if (isSystemActive && recognitionRef.current)
+            try {
+              recognitionRef.current.start();
+            } catch (e) {}
+        }, 2000);
+      };
+      recognition.onresult = (e) =>
+        processarComando(e.results[e.results.length - 1][0].transcript);
+      recognitionRef.current = recognition;
+      try {
+        recognition.start();
+      } catch (e) {}
+    }
     return () => {
-      recognition.abort();
+      if (recognitionRef.current)
+        try {
+          recognitionRef.current.abort();
+        } catch (e) {}
     };
-  }, [isSystemActive]); // CORRIGIDO: Removido showSatellites e showEarthquakes para não reiniciar o mic toda hora
+  }, [isSystemActive]);
 
-  // ============ INICIALIZAÇÃO DO CESIUM ============
   useEffect(() => {
     if (viewerRef.current || !isSystemActive) return;
-
     const viewer = new Cesium.Viewer(containerRef.current, {
       animation: false,
       timeline: false,
@@ -247,7 +273,6 @@ function App() {
       skyBox: false,
       skyAtmosphere: new Cesium.SkyAtmosphere(),
     });
-
     viewer.imageryLayers.addImageryProvider(
       new Cesium.UrlTemplateImageryProvider({
         url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -262,55 +287,32 @@ function App() {
         maximumLevel: 16,
       }),
     );
-
     viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString("#0B0D14");
     viewer.scene.backgroundColor = Cesium.Color.fromCssColorString("#05060A");
     viewer.scene.globe.enableLighting = true;
     viewer.cesiumWidget.creditContainer.style.display = "none";
     viewer.scene.postProcessStages.fxaa.enabled = true;
-
     viewer.camera.setView({
       destination: Cesium.Cartesian3.fromDegrees(-50, 15, 18000000),
     });
     viewerRef.current = viewer;
 
-    const flightsDataSource = new Cesium.CustomDataSource("flights");
-    flightsDataSource.clustering.enabled = true;
-    flightsDataSource.clustering.pixelRange = 40;
-    flightsDataSource.clustering.minimumClusterSize = 4;
-    flightsDataSource.clustering.clusterEvent.addEventListener(
-      (entities, cluster) => {
-        cluster.billboard.show = false;
-        cluster.label.show = true;
-        cluster.label.text = `${entities.length}`;
-        cluster.label.font = "bold 13px Inter, sans-serif";
-        cluster.label.fillColor = Cesium.Color.fromCssColorString("#FFB020");
-        cluster.label.outlineColor = Cesium.Color.fromCssColorString("#05060A");
-        cluster.label.outlineWidth = 3;
-        cluster.label.style = Cesium.LabelStyle.FILL_AND_OUTLINE;
-        cluster.label.horizontalOrigin = Cesium.HorizontalOrigin.CENTER;
-        cluster.label.verticalOrigin = Cesium.VerticalOrigin.CENTER;
-        cluster.point.show = false;
-      },
-    );
-    viewer.dataSources.add(flightsDataSource);
-    flightsDataSourceRef.current = flightsDataSource;
-
-    const satellitesDataSource = new Cesium.CustomDataSource("satellites");
-    viewer.dataSources.add(satellitesDataSource);
-    satellitesDataSourceRef.current = satellitesDataSource;
-
-    const earthquakesDataSource = new Cesium.CustomDataSource("earthquakes");
-    viewer.dataSources.add(earthquakesDataSource);
-    earthquakesDataSourceRef.current = earthquakesDataSource;
+    const flightsDS = new Cesium.CustomDataSource("flights");
+    viewer.dataSources.add(flightsDS);
+    flightsDataSourceRef.current = flightsDS;
+    const satsDS = new Cesium.CustomDataSource("satellites");
+    viewer.dataSources.add(satsDS);
+    satellitesDataSourceRef.current = satsDS;
+    const quakesDS = new Cesium.CustomDataSource("earthquakes");
+    viewer.dataSources.add(quakesDS);
+    earthquakesDataSourceRef.current = quakesDS;
 
     carregarVoos();
     const interval = setInterval(carregarVoos, REFRESH_MS);
-
     const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
     handler.setInputAction((click) => {
       const picked = viewer.scene.pick(click.position);
-      if (Cesium.defined(picked) && picked.id) {
+      if (Cesium.defined(picked) && picked.id)
         viewer.flyTo(picked.id, {
           duration: 2,
           offset: new Cesium.HeadingPitchRange(
@@ -319,7 +321,6 @@ function App() {
             80000,
           ),
         });
-      }
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
     return () => {
@@ -329,157 +330,130 @@ function App() {
     };
   }, [isSystemActive]);
 
-  // ============ CARREGAR VOOS (CORRIGIDO) ============
   const carregarVoos = async () => {
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/flights?limit=200`);
+      if (!res.ok) throw new Error("API offline");
       const data = await res.json();
-
-      if (!data || !data.voos) {
-        throw new Error("Dados de voos inválidos");
-      }
-
-      const dataSource = flightsDataSourceRef.current;
-      if (!dataSource) return;
-
+      const ds = flightsDataSourceRef.current;
+      if (!ds) return;
       flightsDataRef.current = data.voos.filter(
         (v) => v.latitude && v.longitude,
       );
       baseTimeRef.current = Date.now();
-      dataSource.entities.removeAll();
+      ds.entities.removeAll();
 
-      let adicionados = 0;
       for (let i = 0; i < flightsDataRef.current.length; i++) {
         const v = flightsDataRef.current[i];
-        const id = `voo-${i}`;
         const altVisual = 2000 + (v.altitude_m || 10000) * 0.05;
-        const corCompanhia = corPorCompanhia(v.companhia_aerea);
-
-        const posCallback = new Cesium.CallbackProperty(() => {
-          const elapsedSec = (Date.now() - baseTimeRef.current) / 1000;
-          const distKm = ((v.velocidade_ms || 200) * elapsedSec) / 1000;
-          const nova = moverPosicao(
-            v.longitude,
-            v.latitude,
-            v.heading || 0,
-            distKm,
-          );
-          return Cesium.Cartesian3.fromDegrees(nova.lon, nova.lat, altVisual);
+        const cor = corPorCompanhia(v.companhia_aerea);
+        const pos = new Cesium.CallbackProperty(() => {
+          const dist =
+            ((v.velocidade_ms || 200) *
+              ((Date.now() - baseTimeRef.current) / 1000)) /
+            1000;
+          const n = moverPosicao(v.longitude, v.latitude, v.heading || 0, dist);
+          return Cesium.Cartesian3.fromDegrees(n.lon, n.lat, altVisual);
         }, false);
-
-        const orientationCallback = new Cesium.CallbackProperty(() => {
-          const pos = posCallback.getValue();
-          if (!pos) return Cesium.Quaternion.IDENTITY;
-          const headingRad = Cesium.Math.toRadians((v.heading || 0) - 90);
+        const ori = new Cesium.CallbackProperty(() => {
+          const p = pos.getValue();
+          if (!p) return Cesium.Quaternion.IDENTITY;
           return Cesium.Transforms.headingPitchRollQuaternion(
-            pos,
-            new Cesium.HeadingPitchRoll(headingRad, 0, 0),
+            p,
+            new Cesium.HeadingPitchRoll(
+              Cesium.Math.toRadians((v.heading || 0) - 90),
+              0,
+              0,
+            ),
           );
         }, false);
 
-        dataSource.entities.add({
-          id,
-          name: v.callsign || "N/A",
-          position: posCallback,
-          orientation: orientationCallback,
+        ds.entities.add({
+          id: `voo-${i}`,
+          name: v.callsign,
+          position: pos,
+          orientation: ori,
           model: {
             uri: "https://raw.githubusercontent.com/CesiumGS/cesium/main/Apps/SampleData/models/CesiumAir/Cesium_Air.glb",
             minimumPixelSize: 32,
             maximumScale: 20000,
-            color: corCompanhia,
+            color: cor,
             colorBlendMode: Cesium.ColorBlendMode.MIX,
             colorBlendAmount: 0.8,
           },
-          description: `
-            <div style="font-family: Inter, sans-serif; color:#05060A; padding:8px; min-width:240px;">
-              <strong style="font-size:16px; color:#FF7A00;">${v.callsign || "N/A"}</strong>
-              <div style="font-size:12px; color:#666; margin-top:2px;">${v.companhia_aerea?.nome || "Desconhecida"}</div>
-              <hr style="border:none; border-top:1px solid #ddd; margin:8px 0;"/>
-              <div style="font-size:13px;"><strong>🛫 Origem:</strong><br/>${v.origem ? `${v.origem.cidade || "?"} (${v.origem.iata || "?"})` : "Desconhecida"}</div>
-              <div style="font-size:13px; margin-top:6px;"><strong>🛬 Destino:</strong><br/>${v.destino ? `${v.destino.cidade || "?"} (${v.destino.iata || "?"})` : "Desconhecido"}</div>
-            </div>
-          `,
+          description: `<strong>${v.callsign}</strong><br/>${v.companhia_aerea?.nome || "Desconhecida"}`,
         });
-
-        dataSource.entities.add({
+        ds.entities.add({
           polyline: {
             positions: new Cesium.CallbackProperty(() => {
-              const elapsedSec = (Date.now() - baseTimeRef.current) / 1000;
-              const distKm = ((v.velocidade_ms || 200) * elapsedSec) / 1000;
-              const atual = moverPosicao(
+              const dist =
+                ((v.velocidade_ms || 200) *
+                  ((Date.now() - baseTimeRef.current) / 1000)) /
+                1000;
+              const at = moverPosicao(
                 v.longitude,
                 v.latitude,
                 v.heading || 0,
-                distKm,
+                dist,
               );
-              const atras = moverPosicao(
+              const tr = moverPosicao(
                 v.longitude,
                 v.latitude,
                 v.heading || 0,
-                Math.max(0, distKm - 150),
+                Math.max(0, dist - 150),
               );
               return Cesium.Cartesian3.fromDegreesArrayHeights([
-                atras.lon,
-                atras.lat,
+                tr.lon,
+                tr.lat,
                 altVisual,
-                atual.lon,
-                atual.lat,
+                at.lon,
+                at.lat,
                 altVisual,
               ]);
             }, false),
             width: 2,
             material: new Cesium.PolylineGlowMaterialProperty({
               glowPower: 0.3,
-              color: corCompanhia.withAlpha(0.8),
+              color: cor.withAlpha(0.8),
             }),
           },
         });
-        adicionados++;
       }
-
-      setFlightCount(adicionados);
-      setStatus(adicionados > 0 ? "ARGUS ONLINE" : "SEM VOOS (FALLBACK)");
-    } catch (err) {
-      console.error("Erro ao carregar voos:", err);
-      setStatus("ERRO AO CARREGAR VOOS");
+      setFlightCount(flightsDataRef.current.length);
+      setStatus("ARGUS ONLINE");
+    } catch (e) {
+      setStatus("AGUARDANDO SINAL...");
     } finally {
       setLoading(false);
     }
   };
 
   const toggleSatellites = async () => {
-    const dataSource = satellitesDataSourceRef.current;
-    if (!dataSource) return;
-
+    const ds = satellitesDataSourceRef.current;
+    if (!ds) return;
     if (showSatellites) {
-      dataSource.entities.removeAll();
+      ds.entities.removeAll();
       setShowSatellites(false);
       return;
     }
-
     try {
       setStatus("BUSCANDO SATÉLITES...");
       viewerRef.current.camera.flyTo({
         destination: Cesium.Cartesian3.fromDegrees(-50, 15, 25000000),
         duration: 2,
       });
-
       const res = await fetch(`${API_URL}/satellites?grupo=estacoes&limit=50`);
       const data = await res.json();
-
-      dataSource.entities.removeAll();
-
-      for (const sat of data.satelites) {
-        const altMetros = sat.altitude_km * 1000;
+      ds.entities.removeAll();
+      data.satelites.forEach((sat) => {
         const info = infoPorSatelite(sat.nome);
-
-        dataSource.entities.add({
+        ds.entities.add({
           name: sat.nome,
           position: Cesium.Cartesian3.fromDegrees(
             sat.longitude,
             sat.latitude,
-            altMetros,
+            sat.altitude_km * 1000,
           ),
           point: {
             pixelSize: 12,
@@ -490,69 +464,48 @@ function App() {
           },
           label: {
             text: sat.nome,
-            font: "12px Inter, sans-serif",
+            font: "12px Inter",
             fillColor: info.cor,
             outlineColor: Cesium.Color.BLACK,
             outlineWidth: 3,
             style: Cesium.LabelStyle.FILL_AND_OUTLINE,
             pixelOffset: new Cesium.Cartesian2(0, -25),
-            showBackground: true,
-            backgroundColor:
-              Cesium.Color.fromCssColorString("#05060A").withAlpha(0.8),
             disableDepthTestDistance: Number.POSITIVE_INFINITY,
           },
-          description: `
-            <div style="font-family: Inter, sans-serif; color:#05060A; padding:10px; min-width:260px;">
-              <strong style="font-size:16px; color:#00E5FF;">🛰️ ${sat.nome}</strong><br/>
-              <div style="font-size:12px; color:#666; margin-top:2px;">${info.empresa}</div>
-              <hr style="border:none; border-top:1px solid #ddd; margin:10px 0;"/>
-              <strong>Altitude:</strong> ${Math.round(sat.altitude_km)} km<br/>
-              <strong>Latitude:</strong> ${sat.latitude.toFixed(2)}°<br/>
-              <strong>Longitude:</strong> ${sat.longitude.toFixed(2)}°
-            </div>
-          `,
         });
-      }
+      });
       setShowSatellites(true);
       setStatus("ARGUS ONLINE");
-    } catch (err) {
-      console.error(err);
-      setStatus("ERRO AO BUSCAR SATÉLITES");
+    } catch (e) {
+      setStatus("ERRO SATÉLITES");
     }
   };
 
   const toggleEarthquakes = async () => {
-    const dataSource = earthquakesDataSourceRef.current;
-    if (!dataSource) return;
-
+    const ds = earthquakesDataSourceRef.current;
+    if (!ds) return;
     if (showEarthquakes) {
-      dataSource.entities.removeAll();
+      ds.entities.removeAll();
       setShowEarthquakes(false);
       return;
     }
-
     try {
       setStatus("BUSCANDO TERREMOTOS...");
       viewerRef.current.camera.flyTo({
         destination: Cesium.Cartesian3.fromDegrees(-50, 15, 18000000),
         duration: 2,
       });
-
       const res = await fetch(
         `${API_URL}/earthquakes?periodo=dia&magnitude=m25&limit=100`,
       );
       const data = await res.json();
-
-      dataSource.entities.removeAll();
-
-      for (const eq of data.terremotos) {
-        const tamanho = Math.max(10, eq.magnitude * 4);
-
-        dataSource.entities.add({
-          name: `Terremoto M${eq.magnitude}`,
+      ds.entities.removeAll();
+      data.terremotos.forEach((eq) => {
+        ds.entities.add({
+          name: `M${eq.magnitude}`,
           position: Cesium.Cartesian3.fromDegrees(eq.longitude, eq.latitude, 0),
           point: {
-            pixelSize: tamanho,
+            pixelSize: Math.max(10, eq.magnitude * 4),
             color: Cesium.Color.RED.withAlpha(0.6),
             outlineColor: Cesium.Color.RED,
             outlineWidth: 2,
@@ -560,7 +513,7 @@ function App() {
           },
           label: {
             text: `M${eq.magnitude}`,
-            font: "bold 12px Inter, sans-serif",
+            font: "bold 12px Inter",
             fillColor: Cesium.Color.WHITE,
             outlineColor: Cesium.Color.BLACK,
             outlineWidth: 3,
@@ -568,30 +521,13 @@ function App() {
             pixelOffset: new Cesium.Cartesian2(0, -20),
             disableDepthTestDistance: Number.POSITIVE_INFINITY,
           },
-          description: `
-            <div style="font-family: Inter, sans-serif; color:#05060A; padding:8px; min-width:240px;">
-              <strong style="font-size:16px; color:#FF0000;">🌋 Terremoto M${eq.magnitude}</strong><br/>
-              <div style="font-size:12px; color:#666; margin-top:2px;">${eq.local}</div>
-              <hr style="border:none; border-top:1px solid #ddd; margin:8px 0;"/>
-              <strong>Profundidade:</strong> ${Math.round(eq.profundidade_km)} km<br/>
-              <strong>Alerta de Tsunami:</strong> ${eq.tsunami ? "⚠️ SIM" : "Não"}<br/>
-            </div>
-          `,
         });
-      }
+      });
       setShowEarthquakes(true);
       setStatus("ARGUS ONLINE");
-    } catch (err) {
-      console.error(err);
-      setStatus("ERRO AO BUSCAR TERREMOTOS");
+    } catch (e) {
+      setStatus("ERRO TERREMOTOS");
     }
-  };
-
-  const handleOrbitalView = () => {
-    viewerRef.current?.camera.flyTo({
-      destination: Cesium.Cartesian3.fromDegrees(-50, 15, 18000000),
-      duration: 2,
-    });
   };
 
   return (
@@ -601,7 +537,6 @@ function App() {
       ) : (
         <div className="argus-root">
           <div ref={containerRef} className="argus-globe" />
-
           <div className="argus-hud">
             <div className="argus-logo">
               <span className="argus-eye">👁️</span>
@@ -610,23 +545,24 @@ function App() {
                 <p className="mono">Cem olhos. Uma verdade.</p>
               </div>
             </div>
-
             <div className="vision-indicator">
-              <div className={`vision-dot ${isListening ? "listening" : ""}`} />
+              <div
+                className={`vision-dot ${isListening ? "listening" : ""} ${isSpeaking ? "speaking" : ""}`}
+              />
               <span className="vision-text">
-                {isListening
-                  ? "VISION OUVINDO..."
-                  : "VISION OFFLINE (Verifique o Microfone)"}
+                {isSpeaking
+                  ? "VISION FALANDO..."
+                  : isListening
+                    ? "VISION OUVINDO..."
+                    : "VISION OFFLINE"}
               </span>
             </div>
-
             {visionMessage && (
               <div className="vision-message">
                 <p>{visionMessage}</p>
               </div>
             )}
           </div>
-
           <div className="argus-status">
             <div className="argus-status-item">
               <span className="argus-label">STATUS</span>
@@ -637,27 +573,76 @@ function App() {
               <span className="argus-value mono">{flightCount}</span>
             </div>
           </div>
-
+          <div
+            style={{
+              position: "absolute",
+              bottom: "30px",
+              left: "30px",
+              zIndex: 10,
+              background: "rgba(11,13,20,0.9)",
+              padding: "10px",
+              borderRadius: "8px",
+              border: "1px solid #FFB020",
+            }}
+          >
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                processarComando(textInput);
+                setTextInput("");
+              }}
+              style={{ display: "flex", gap: "10px" }}
+            >
+              <input
+                type="text"
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                placeholder="Fale ou digite..."
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#FFB020",
+                  outline: "none",
+                  width: "200px",
+                  fontFamily: "JetBrains Mono",
+                }}
+              />
+              <button
+                type="submit"
+                style={{
+                  background: "#FFB020",
+                  border: "none",
+                  padding: "5px 15px",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                }}
+              >
+                ENVIAR
+              </button>
+            </form>
+          </div>
           <div className="argus-actions">
             <button className="argus-refresh" onClick={toggleEarthquakes}>
               <span className="argus-btn-en">
-                {showEarthquakes ? "HIDE EARTHQUAKES" : "SHOW EARTHQUAKES"}
-              </span>
-              <span className="argus-btn-pt">
-                {showEarthquakes ? "Ocultar terremotos" : "Mostrar terremotos"}
+                {showEarthquakes ? "HIDE QUAKES" : "SHOW QUAKES"}
               </span>
             </button>
             <button className="argus-refresh" onClick={toggleSatellites}>
               <span className="argus-btn-en">
                 {showSatellites ? "HIDE SATELLITES" : "SHOW SATELLITES"}
               </span>
-              <span className="argus-btn-pt">
-                {showSatellites ? "Ocultar satélites" : "Mostrar satélites"}
-              </span>
             </button>
-            <button className="argus-refresh" onClick={handleOrbitalView}>
+            <button
+              className="argus-refresh"
+              onClick={() =>
+                viewerRef.current?.camera.flyTo({
+                  destination: Cesium.Cartesian3.fromDegrees(-50, 15, 18000000),
+                  duration: 2,
+                })
+              }
+            >
               <span className="argus-btn-en">ORBITAL VIEW</span>
-              <span className="argus-btn-pt">Visão orbital</span>
             </button>
             <button
               className="argus-refresh"
@@ -665,10 +650,7 @@ function App() {
               disabled={loading}
             >
               <span className="argus-btn-en">
-                {loading ? "LOADING..." : "REFRESH FLIGHTS"}
-              </span>
-              <span className="argus-btn-pt">
-                {loading ? "Carregando..." : "Atualizar voos"}
+                {loading ? "LOADING..." : "REFRESH"}
               </span>
             </button>
           </div>
@@ -677,5 +659,3 @@ function App() {
     </>
   );
 }
-
-export default App;
