@@ -20,3 +20,4 @@ Thumbs.db
 # Builds
 dist/
 build/*.exe
+Mark-LVI/
