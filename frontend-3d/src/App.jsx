@@ -1,5 +1,6 @@
 /**
  * PROJECT ARGUS 3D — VISION (Groq IA + Edge TTS)
+ * VISUAL CINEMATOGRÁFICO (Iluminação e Alta Resolução)
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -83,7 +84,7 @@ export default function App() {
   const baseTimeRef = useRef(null);
   const audioRef = useRef(null);
   const recognitionRef = useRef(null);
-  const visionAudioRef = useRef(null); // Ref para o áudio da IA
+  const visionAudioRef = useRef(null);
 
   const [isSystemActive, setIsSystemActive] = useState(false);
   const [flightCount, setFlightCount] = useState(0);
@@ -103,14 +104,12 @@ export default function App() {
     stateRef.current = { flightCount, showSatellites, showEarthquakes };
   }, [flightCount, showSatellites, showEarthquakes]);
 
-  // ============ NOVA FUNÇÃO DE VOZ (EDGE TTS) ============
   const visionFalar = async (texto) => {
     if (!texto) return;
     setVisionMessage(texto);
     setIsSpeaking(true);
 
     try {
-      // Chama o backend para gerar a voz neural
       const res = await fetch(`${API_URL}/vision/speak`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -121,13 +120,9 @@ export default function App() {
         const blob = await res.blob();
         const audioUrl = URL.createObjectURL(blob);
 
-        if (visionAudioRef.current) {
-          visionAudioRef.current.pause();
-        }
+        if (visionAudioRef.current) visionAudioRef.current.pause();
 
         visionAudioRef.current = new Audio(audioUrl);
-
-        // Quando o áudio terminar de tocar, para a animação da bolinha
         visionAudioRef.current.onended = () => setIsSpeaking(false);
         visionAudioRef.current.play();
       } else {
@@ -176,7 +171,6 @@ export default function App() {
   };
 
   const processarComando = async (comando) => {
-    // Agora usa o estado 'isSpeaking' em vez do window.speechSynthesis
     if (!comando.trim() || isSpeaking) return;
     const cmd = comando.toLowerCase().trim();
     setStatus("PROCESSANDO...");
@@ -271,7 +265,8 @@ export default function App() {
   }, [isSystemActive]);
 
   useEffect(() => {
-    if (viewerRef.current || !isSystemActive) return;
+    if (viewerRef.current) return;
+
     const viewer = new Cesium.Viewer(containerRef.current, {
       animation: false,
       timeline: false,
@@ -286,6 +281,12 @@ export default function App() {
       skyBox: false,
       skyAtmosphere: new Cesium.SkyAtmosphere(),
     });
+
+    // VISUAL CINEMATOGRÁFICO RESTAURADO
+    viewer.scene.globe.enableLighting = true;
+    viewer.scene.globe.showGroundAtmosphere = true;
+
+    // Textura em alta resolução
     viewer.imageryLayers.addImageryProvider(
       new Cesium.UrlTemplateImageryProvider({
         url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -300,9 +301,9 @@ export default function App() {
         maximumLevel: 16,
       }),
     );
+
     viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString("#0B0D14");
     viewer.scene.backgroundColor = Cesium.Color.fromCssColorString("#05060A");
-    viewer.scene.globe.enableLighting = true;
     viewer.cesiumWidget.creditContainer.style.display = "none";
     viewer.scene.postProcessStages.fxaa.enabled = true;
     viewer.camera.setView({
@@ -313,15 +314,18 @@ export default function App() {
     const flightsDS = new Cesium.CustomDataSource("flights");
     viewer.dataSources.add(flightsDS);
     flightsDataSourceRef.current = flightsDS;
+
     const satsDS = new Cesium.CustomDataSource("satellites");
     viewer.dataSources.add(satsDS);
     satellitesDataSourceRef.current = satsDS;
+
     const quakesDS = new Cesium.CustomDataSource("earthquakes");
     viewer.dataSources.add(quakesDS);
     earthquakesDataSourceRef.current = quakesDS;
 
     carregarVoos();
     const interval = setInterval(carregarVoos, REFRESH_MS);
+
     const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
     handler.setInputAction((click) => {
       const picked = viewer.scene.pick(click.position);
@@ -341,16 +345,18 @@ export default function App() {
       handler.destroy();
       viewer.destroy();
     };
-  }, [isSystemActive]);
+  }, []);
 
   const carregarVoos = async () => {
     setLoading(true);
     try {
+      // Voltei para 200 aviões
       const res = await fetch(`${API_URL}/flights?limit=200`);
       if (!res.ok) throw new Error("API offline");
       const data = await res.json();
       const ds = flightsDataSourceRef.current;
       if (!ds) return;
+
       flightsDataRef.current = data.voos.filter(
         (v) => v.latitude && v.longitude,
       );
@@ -361,6 +367,7 @@ export default function App() {
         const v = flightsDataRef.current[i];
         const altVisual = 2000 + (v.altitude_m || 10000) * 0.05;
         const cor = corPorCompanhia(v.companhia_aerea);
+
         const pos = new Cesium.CallbackProperty(() => {
           const dist =
             ((v.velocidade_ms || 200) *
@@ -369,6 +376,7 @@ export default function App() {
           const n = moverPosicao(v.longitude, v.latitude, v.heading || 0, dist);
           return Cesium.Cartesian3.fromDegrees(n.lon, n.lat, altVisual);
         }, false);
+
         const ori = new Cesium.CallbackProperty(() => {
           const p = pos.getValue();
           if (!p) return Cesium.Quaternion.IDENTITY;
@@ -395,8 +403,18 @@ export default function App() {
             colorBlendMode: Cesium.ColorBlendMode.MIX,
             colorBlendAmount: 0.8,
           },
-          description: `<strong>${v.callsign}</strong><br/>${v.companhia_aerea?.nome || "Desconhecida"}`,
+
+          description: `
+            <div style="font-family: Inter, sans-serif; color:#05060A; padding:8px; min-width:240px;">
+              <strong style="font-size:16px; color:#FF7A00;">${v.callsign || "N/A"}</strong>
+              <div style="font-size:12px; color:#666; margin-top:2px;">${v.companhia_aerea?.nome || "Desconhecida"}</div>
+              <hr style="border:none; border-top:1px solid #ddd; margin:8px 0;"/>
+              <div style="font-size:13px;"><strong>🛫 Origem:</strong><br/>${v.origem ? `${v.origem.cidade || "?"} (${v.origem.iata || "?"})` : "Desconhecida"}</div>
+              <div style="font-size:13px; margin-top:6px;"><strong>🛬 Destino:</strong><br/>${v.destino ? `${v.destino.cidade || "?"} (${v.destino.iata || "?"})` : "Desconhecido"}</div>
+            </div>
+          `,
         });
+
         ds.entities.add({
           polyline: {
             positions: new Cesium.CallbackProperty(() => {
@@ -545,133 +563,142 @@ export default function App() {
 
   return (
     <>
-      {!isSystemActive ? (
-        <IntroScreen onFinish={() => setIsSystemActive(true)} />
-      ) : (
-        <div className="argus-root">
-          <div ref={containerRef} className="argus-globe" />
-          <div className="argus-hud">
-            <div className="argus-logo">
-              <span className="argus-eye">👁️</span>
-              <div>
-                <h1>PROJECT ARGUS</h1>
-                <p className="mono">Cem olhos. Uma verdade.</p>
-              </div>
-            </div>
-            <div className="vision-indicator">
-              <div
-                className={`vision-dot ${isListening ? "listening" : ""} ${isSpeaking ? "speaking" : ""}`}
-              />
-              <span className="vision-text">
-                {isSpeaking
-                  ? "VISION FALANDO..."
-                  : isListening
-                    ? "VISION OUVINDO..."
-                    : "VISION OFFLINE"}
-              </span>
-            </div>
-            {visionMessage && (
-              <div className="vision-message">
-                <p>{visionMessage}</p>
-              </div>
-            )}
-          </div>
+      <div
+        style={{
+          display: isSystemActive ? "none" : "block",
+          position: "absolute",
+          inset: 0,
+          zIndex: 10000,
+        }}
+      >
+        {!isSystemActive && (
+          <IntroScreen onFinish={() => setIsSystemActive(true)} />
+        )}
+      </div>
 
-          <div className="argus-status">
-            <div className="argus-status-item">
-              <span className="argus-label">STATUS</span>
-              <span className="argus-value">{status}</span>
-            </div>
-            <div className="argus-status-item">
-              <span className="argus-label">FLIGHTS</span>
-              <span className="argus-value mono">{flightCount}</span>
+      <div className="argus-root" style={{ opacity: isSystemActive ? 1 : 0 }}>
+        <div ref={containerRef} className="argus-globe" />
+        <div className="argus-hud">
+          <div className="argus-logo">
+            <span className="argus-eye">👁️</span>
+            <div>
+              <h1>PROJECT ARGUS</h1>
+              <p className="mono">Cem olhos. Uma verdade.</p>
             </div>
           </div>
-
-          <div
-            style={{
-              position: "absolute",
-              bottom: "30px",
-              left: "30px",
-              zIndex: 10,
-              background: "rgba(11,13,20,0.9)",
-              padding: "10px",
-              borderRadius: "8px",
-              border: "1px solid #FFB020",
-            }}
-          >
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                processarComando(textInput);
-                setTextInput("");
-              }}
-              style={{ display: "flex", gap: "10px" }}
-            >
-              <input
-                type="text"
-                value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
-                placeholder="Fale ou digite..."
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "#FFB020",
-                  outline: "none",
-                  width: "200px",
-                  fontFamily: "JetBrains Mono",
-                }}
-              />
-              <button
-                type="submit"
-                style={{
-                  background: "#FFB020",
-                  border: "none",
-                  padding: "5px 15px",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                }}
-              >
-                ENVIAR
-              </button>
-            </form>
+          <div className="vision-indicator">
+            <div
+              className={`vision-dot ${isListening ? "listening" : ""} ${isSpeaking ? "speaking" : ""}`}
+            />
+            <span className="vision-text">
+              {isSpeaking
+                ? "VISION FALANDO..."
+                : isListening
+                  ? "VISION OUVINDO..."
+                  : "VISION OFFLINE"}
+            </span>
           </div>
+          {visionMessage && (
+            <div className="vision-message">
+              <p>{visionMessage}</p>
+            </div>
+          )}
+        </div>
 
-          <div className="argus-actions">
-            <button className="argus-refresh" onClick={toggleEarthquakes}>
-              <span className="argus-btn-en">
-                {showEarthquakes ? "HIDE QUAKES" : "SHOW QUAKES"}
-              </span>
-            </button>
-            <button className="argus-refresh" onClick={toggleSatellites}>
-              <span className="argus-btn-en">
-                {showSatellites ? "HIDE SATELLITES" : "SHOW SATELLITES"}
-              </span>
-            </button>
-            <button
-              className="argus-refresh"
-              onClick={() =>
-                viewerRef.current?.camera.flyTo({
-                  destination: Cesium.Cartesian3.fromDegrees(-50, 15, 18000000),
-                  duration: 2,
-                })
-              }
-            >
-              <span className="argus-btn-en">ORBITAL VIEW</span>
-            </button>
-            <button
-              className="argus-refresh"
-              onClick={carregarVoos}
-              disabled={loading}
-            >
-              <span className="argus-btn-en">
-                {loading ? "LOADING..." : "REFRESH"}
-              </span>
-            </button>
+        <div className="argus-status">
+          <div className="argus-status-item">
+            <span className="argus-label">STATUS</span>
+            <span className="argus-value">{status}</span>
+          </div>
+          <div className="argus-status-item">
+            <span className="argus-label">FLIGHTS</span>
+            <span className="argus-value mono">{flightCount}</span>
           </div>
         </div>
-      )}
+
+        <div
+          style={{
+            position: "absolute",
+            bottom: "30px",
+            left: "30px",
+            zIndex: 10,
+            background: "rgba(11,13,20,0.9)",
+            padding: "10px",
+            borderRadius: "8px",
+            border: "1px solid #FFB020",
+          }}
+        >
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              processarComando(textInput);
+              setTextInput("");
+            }}
+            style={{ display: "flex", gap: "10px" }}
+          >
+            <input
+              type="text"
+              value={textInput}
+              onChange={(e) => setTextInput(e.target.value)}
+              placeholder="Fale ou digite..."
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "#FFB020",
+                outline: "none",
+                width: "200px",
+                fontFamily: "JetBrains Mono",
+              }}
+            />
+            <button
+              type="submit"
+              style={{
+                background: "#FFB020",
+                border: "none",
+                padding: "5px 15px",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontWeight: "bold",
+              }}
+            >
+              ENVIAR
+            </button>
+          </form>
+        </div>
+
+        <div className="argus-actions">
+          <button className="argus-refresh" onClick={toggleEarthquakes}>
+            <span className="argus-btn-en">
+              {showEarthquakes ? "HIDE QUAKES" : "SHOW QUAKES"}
+            </span>
+          </button>
+          <button className="argus-refresh" onClick={toggleSatellites}>
+            <span className="argus-btn-en">
+              {showSatellites ? "HIDE SATELLITES" : "SHOW SATELLITES"}
+            </span>
+          </button>
+          <button
+            className="argus-refresh"
+            onClick={() =>
+              viewerRef.current?.camera.flyTo({
+                destination: Cesium.Cartesian3.fromDegrees(-50, 15, 18000000),
+                duration: 2,
+              })
+            }
+          >
+            <span className="argus-btn-en">ORBITAL VIEW</span>
+          </button>
+          <button
+            className="argus-refresh"
+            onClick={carregarVoos}
+            disabled={loading}
+          >
+            <span className="argus-btn-en">
+              {loading ? "LOADING..." : "REFRESH"}
+            </span>
+          </button>
+        </div>
+      </div>
     </>
   );
 }

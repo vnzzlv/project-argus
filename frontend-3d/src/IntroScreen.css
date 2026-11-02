@@ -10,125 +10,102 @@
   overflow: hidden;
 }
 
-.argus-lens-eye {
+/* Fundo Matrix */
+.matrix-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0.4; /* Deixa a chuva de fundo mais sutil para não ofuscar o texto */
+}
+
+/* Terminal */
+.terminal-container {
   position: relative;
-  width: 250px;
-  height: 250px;
-  cursor: pointer;
+  z-index: 10;
+  background: rgba(11, 13, 20, 0.85);
+  border: 1px solid rgba(255, 176, 32, 0.4);
+  border-radius: 8px;
+  padding: 30px 40px;
+  box-shadow: 0 0 40px rgba(255, 176, 32, 0.1);
+  backdrop-filter: blur(5px);
+  min-width: 450px;
+  font-family: "JetBrains Mono", "Courier New", monospace;
+}
+
+.terminal-line {
+  color: #00e5ff; /* Ciano para o texto do terminal */
+  font-size: 14px;
+  margin: 8px 0;
+  text-shadow: 0 0 5px rgba(0, 229, 255, 0.5);
+  animation: fade-in-line 0.3s ease-out forwards;
+  opacity: 0;
+}
+
+.terminal-line:last-child {
+  color: #ffb020; /* A última linha (Bem-vindo) fica âmbar */
+  text-shadow: 0 0 8px rgba(255, 176, 32, 0.8);
+  font-weight: bold;
+}
+
+.terminal-cursor {
+  color: #ffb020;
+  font-size: 16px;
+  font-weight: bold;
+  animation: blink-cursor 1s infinite;
+}
+
+/* Orbe */
+.jarvis-orb-wrapper {
+  position: relative;
+  z-index: 10;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  transition:
-    transform 0.3s ease,
-    filter 0.3s ease;
+  cursor: pointer;
+  animation: fade-in 1s ease-in;
 }
 
-.argus-lens-eye:hover {
-  transform: scale(1.05);
-  filter: drop-shadow(0 0 40px rgba(255, 176, 32, 0.8));
-}
-
-.lens-outer {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  border: 2px dashed rgba(255, 176, 32, 0.3);
-  animation: spin 15s linear infinite;
-}
-
-.lens-middle {
-  position: absolute;
-  width: 80%;
-  height: 80%;
-  border-radius: 50%;
-  border: 4px solid rgba(255, 176, 32, 0.6);
-  box-shadow: inset 0 0 20px rgba(255, 176, 32, 0.2);
-  animation: spin-reverse 10s linear infinite;
-}
-
-.lens-iris {
-  position: absolute;
-  width: 60%;
-  height: 60%;
-  border-radius: 50%;
-  background: radial-gradient(circle, #ffb020 0%, #ff7a00 40%, #000 100%);
-  box-shadow:
-    0 0 50px #ff7a00,
-    inset 0 0 20px #ffb020;
-  animation: pulse-lens 3s infinite alternate;
-}
-
-.lens-pupil {
-  position: absolute;
-  width: 20%;
-  height: 20%;
-  border-radius: 50%;
-  background: #000;
-  box-shadow:
-    inset 0 0 10px #ffb020,
-    0 0 20px #000;
-}
-
-.lens-glare {
-  position: absolute;
-  top: 25%;
-  left: 30%;
-  width: 20px;
-  height: 10px;
-  background: #fff;
-  border-radius: 50%;
-  transform: rotate(-45deg);
-  opacity: 0.7;
-  filter: blur(2px);
+.intro-status {
+  color: #ffb020;
+  font-family: "Orbitron", sans-serif;
+  letter-spacing: 5px;
+  margin-top: 20px;
 }
 
 .eye-instruction {
-  color: #ffb020;
+  color: #8a8f98;
   font-family: "Orbitron", sans-serif;
   letter-spacing: 2px;
-  margin-top: 20px;
-  text-align: center;
-  animation: blink-text 2s infinite;
+  font-size: 12px;
 }
 
-@keyframes spin {
+/* Animações */
+@keyframes fade-in-line {
   from {
-    transform: rotate(0deg);
+    opacity: 0;
+    transform: translateX(-10px);
   }
   to {
-    transform: rotate(360deg);
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
-@keyframes spin-reverse {
-  from {
-    transform: rotate(360deg);
-  }
-  to {
-    transform: rotate(0deg);
-  }
-}
-
-@keyframes pulse-lens {
-  0% {
-    box-shadow:
-      0 0 20px #ff7a00,
-      inset 0 0 10px #ffb020;
-  }
-  100% {
-    box-shadow:
-      0 0 60px #ffb020,
-      inset 0 0 30px #ffb020;
-  }
-}
-
-@keyframes blink-text {
+@keyframes blink-cursor {
   0%,
   100% {
     opacity: 1;
   }
   50% {
-    opacity: 0.4;
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
