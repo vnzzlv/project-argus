@@ -21,3 +21,4 @@ Thumbs.db
 dist/
 build/*.exe
 Mark-LVI/
+backend/vision_voice.mp3
