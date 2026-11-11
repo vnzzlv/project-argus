@@ -1,15 +1,16 @@
-/**
- * PROJECT ARGUS 3D — VISION (Groq IA + Edge TTS)
- * VISUAL CINEMATOGRÁFICO (Iluminação e Alta Resolução)
- */
-
 import { useEffect, useRef, useState } from "react";
 import * as Cesium from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import "./App.css";
 import IntroScreen from "./IntroScreen";
+import VisionChat from "./VisionChat";
 
-const API_URL = "http://127.0.0.1:8000";
+const isLocal =
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1";
+const API_URL = isLocal
+  ? "http://127.0.0.1:8000"
+  : `http://${window.location.hostname}:8080`;
 const REFRESH_MS = 900000;
 
 function corPorCompanhia(companhia) {
@@ -82,9 +83,6 @@ export default function App() {
   const earthquakesDataSourceRef = useRef(null);
   const flightsDataRef = useRef([]);
   const baseTimeRef = useRef(null);
-  const audioRef = useRef(null);
-  const recognitionRef = useRef(null);
-  const visionAudioRef = useRef(null);
 
   const [isSystemActive, setIsSystemActive] = useState(false);
   const [flightCount, setFlightCount] = useState(0);
@@ -92,67 +90,12 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [showSatellites, setShowSatellites] = useState(false);
   const [showEarthquakes, setShowEarthquakes] = useState(false);
-
-  const [isListening, setIsListening] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [visionMessage, setVisionMessage] = useState("");
-  const [currentTrack, setCurrentTrack] = useState("");
-  const [textInput, setTextInput] = useState("");
+  const [messages, setMessages] = useState([]);
 
   const stateRef = useRef({ flightCount, showSatellites, showEarthquakes });
   useEffect(() => {
     stateRef.current = { flightCount, showSatellites, showEarthquakes };
   }, [flightCount, showSatellites, showEarthquakes]);
-
-  const visionFalar = async (texto) => {
-    if (!texto) return;
-    setVisionMessage(texto);
-    setIsSpeaking(true);
-
-    try {
-      const res = await fetch(`${API_URL}/vision/speak`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ texto: texto }),
-      });
-
-      if (res.ok) {
-        const blob = await res.blob();
-        const audioUrl = URL.createObjectURL(blob);
-
-        if (visionAudioRef.current) visionAudioRef.current.pause();
-
-        visionAudioRef.current = new Audio(audioUrl);
-        visionAudioRef.current.onended = () => setIsSpeaking(false);
-        visionAudioRef.current.play();
-      } else {
-        setIsSpeaking(false);
-      }
-    } catch (error) {
-      console.error("Erro ao tocar áudio:", error);
-      setIsSpeaking(false);
-    }
-  };
-
-  const tocarTrilha = (numero) => {
-    const nomeArquivo = `/trilha${numero}.mp3`;
-    if (currentTrack === nomeArquivo && audioRef.current) {
-      audioRef.current.play().catch((e) => console.log(e));
-      return;
-    }
-    if (audioRef.current) audioRef.current.pause();
-    audioRef.current = new Audio(nomeArquivo);
-    audioRef.current.volume = 0.15;
-    audioRef.current.loop = true;
-    audioRef.current.play().catch((e) => console.log("Erro áudio:", e));
-    setCurrentTrack(nomeArquivo);
-    visionFalar(`Iniciando trilha sonora ${numero}, senhor.`);
-  };
-
-  const pararMusica = () => {
-    if (audioRef.current) audioRef.current.pause();
-    visionFalar("Silenciando trilha sonora, senhor.");
-  };
 
   const filtrarVoos = (icaoCode) => {
     const dataSource = flightsDataSourceRef.current;
@@ -171,22 +114,17 @@ export default function App() {
   };
 
   const processarComando = async (comando) => {
-    if (!comando.trim() || isSpeaking) return;
+    if (!comando.trim()) return;
+
+    setMessages((prev) => [...prev, { sender: "user", text: comando }]);
     const cmd = comando.toLowerCase().trim();
     setStatus("PROCESSANDO...");
 
-    if (cmd.includes("modo viana")) {
-      tocarTrilha(1);
-      setStatus("ARGUS ONLINE");
-      return;
-    }
-    if (cmd.includes("silêncio") || cmd.includes("parar música")) {
-      pararMusica();
-      setStatus("ARGUS ONLINE");
-      return;
-    }
     if (cmd.includes("ativar olho de deus")) {
-      visionFalar("Ativando todas as camadas, senhor.");
+      setMessages((prev) => [
+        ...prev,
+        { sender: "vision", text: "Ativando todas as camadas, senhor." },
+      ]);
       if (!showSatellites) toggleSatellites();
       if (!showEarthquakes) toggleEarthquakes();
       setStatus("ARGUS ONLINE");
@@ -210,7 +148,12 @@ export default function App() {
       if (!res.ok) throw new Error("Falha na API");
       const data = await res.json();
 
-      if (data.resposta) visionFalar(data.resposta);
+      if (data.resposta) {
+        setMessages((prev) => [
+          ...prev,
+          { sender: "vision", text: data.resposta },
+        ]);
+      }
 
       if (data.acao === "FILTRAR_GOL") filtrarVoos("GLO");
       else if (data.acao === "FILTRAR_LATAM") filtrarVoos("TAM");
@@ -224,45 +167,16 @@ export default function App() {
       setStatus("ARGUS ONLINE");
     } catch (error) {
       console.error(error);
-      visionFalar("Desculpe, senhor. Meu núcleo neural está offline.");
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "vision",
+          text: "Desculpe, senhor. Meu núcleo neural está offline.",
+        },
+      ]);
       setStatus("ARGUS ONLINE");
     }
   };
-
-  useEffect(() => {
-    if (!isSystemActive) return;
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return;
-
-    if (!recognitionRef.current) {
-      const recognition = new SR();
-      recognition.lang = "pt-BR";
-      recognition.continuous = true;
-      recognition.interimResults = false;
-      recognition.onstart = () => setIsListening(true);
-      recognition.onend = () => {
-        setIsListening(false);
-        setTimeout(() => {
-          if (isSystemActive && recognitionRef.current)
-            try {
-              recognitionRef.current.start();
-            } catch (e) {}
-        }, 2000);
-      };
-      recognition.onresult = (e) =>
-        processarComando(e.results[e.results.length - 1][0].transcript);
-      recognitionRef.current = recognition;
-      try {
-        recognition.start();
-      } catch (e) {}
-    }
-    return () => {
-      if (recognitionRef.current)
-        try {
-          recognitionRef.current.abort();
-        } catch (e) {}
-    };
-  }, [isSystemActive]);
 
   useEffect(() => {
     if (viewerRef.current) return;
@@ -276,17 +190,14 @@ export default function App() {
       sceneModePicker: false,
       navigationHelpButton: false,
       fullscreenButton: false,
-      infoBox: true,
-      selectionIndicator: true,
+      infoBox: false, // REMOVE A CAIXA DE MENSAGEM DO AVIÃO
+      selectionIndicator: false, // REMOVE O QUADRADO VERDE DE SELEÇÃO
       skyBox: false,
       skyAtmosphere: new Cesium.SkyAtmosphere(),
     });
 
-    // VISUAL CINEMATOGRÁFICO RESTAURADO
     viewer.scene.globe.enableLighting = true;
     viewer.scene.globe.showGroundAtmosphere = true;
-
-    // Textura em alta resolução
     viewer.imageryLayers.addImageryProvider(
       new Cesium.UrlTemplateImageryProvider({
         url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -314,11 +225,9 @@ export default function App() {
     const flightsDS = new Cesium.CustomDataSource("flights");
     viewer.dataSources.add(flightsDS);
     flightsDataSourceRef.current = flightsDS;
-
     const satsDS = new Cesium.CustomDataSource("satellites");
     viewer.dataSources.add(satsDS);
     satellitesDataSourceRef.current = satsDS;
-
     const quakesDS = new Cesium.CustomDataSource("earthquakes");
     viewer.dataSources.add(quakesDS);
     earthquakesDataSourceRef.current = quakesDS;
@@ -329,6 +238,7 @@ export default function App() {
     const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
     handler.setInputAction((click) => {
       const picked = viewer.scene.pick(click.position);
+      // Agora ele dá zoom no avião sem abrir o popup
       if (Cesium.defined(picked) && picked.id)
         viewer.flyTo(picked.id, {
           duration: 2,
@@ -350,7 +260,6 @@ export default function App() {
   const carregarVoos = async () => {
     setLoading(true);
     try {
-      // Voltei para 200 aviões
       const res = await fetch(`${API_URL}/flights?limit=200`);
       if (!res.ok) throw new Error("API offline");
       const data = await res.json();
@@ -403,16 +312,8 @@ export default function App() {
             colorBlendMode: Cesium.ColorBlendMode.MIX,
             colorBlendAmount: 0.8,
           },
-
-          description: `
-            <div style="font-family: Inter, sans-serif; color:#05060A; padding:8px; min-width:240px;">
-              <strong style="font-size:16px; color:#FF7A00;">${v.callsign || "N/A"}</strong>
-              <div style="font-size:12px; color:#666; margin-top:2px;">${v.companhia_aerea?.nome || "Desconhecida"}</div>
-              <hr style="border:none; border-top:1px solid #ddd; margin:8px 0;"/>
-              <div style="font-size:13px;"><strong>🛫 Origem:</strong><br/>${v.origem ? `${v.origem.cidade || "?"} (${v.origem.iata || "?"})` : "Desconhecida"}</div>
-              <div style="font-size:13px; margin-top:6px;"><strong>🛬 Destino:</strong><br/>${v.destino ? `${v.destino.cidade || "?"} (${v.destino.iata || "?"})` : "Desconhecido"}</div>
-            </div>
-          `,
+          // A descrição foi mantida, mas não vai mais aparecer na tela por causa do infoBox: false
+          description: `Voo ${v.callsign}`,
         });
 
         ds.entities.add({
@@ -578,6 +479,7 @@ export default function App() {
 
       <div className="argus-root" style={{ opacity: isSystemActive ? 1 : 0 }}>
         <div ref={containerRef} className="argus-globe" />
+
         <div className="argus-hud">
           <div className="argus-logo">
             <span className="argus-eye">👁️</span>
@@ -586,23 +488,6 @@ export default function App() {
               <p className="mono">Cem olhos. Uma verdade.</p>
             </div>
           </div>
-          <div className="vision-indicator">
-            <div
-              className={`vision-dot ${isListening ? "listening" : ""} ${isSpeaking ? "speaking" : ""}`}
-            />
-            <span className="vision-text">
-              {isSpeaking
-                ? "VISION FALANDO..."
-                : isListening
-                  ? "VISION OUVINDO..."
-                  : "VISION OFFLINE"}
-            </span>
-          </div>
-          {visionMessage && (
-            <div className="vision-message">
-              <p>{visionMessage}</p>
-            </div>
-          )}
         </div>
 
         <div className="argus-status">
@@ -616,57 +501,12 @@ export default function App() {
           </div>
         </div>
 
-        <div
-          style={{
-            position: "absolute",
-            bottom: "30px",
-            left: "30px",
-            zIndex: 10,
-            background: "rgba(11,13,20,0.9)",
-            padding: "10px",
-            borderRadius: "8px",
-            border: "1px solid #FFB020",
-          }}
-        >
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              processarComando(textInput);
-              setTextInput("");
-            }}
-            style={{ display: "flex", gap: "10px" }}
-          >
-            <input
-              type="text"
-              value={textInput}
-              onChange={(e) => setTextInput(e.target.value)}
-              placeholder="Fale ou digite..."
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "#FFB020",
-                outline: "none",
-                width: "200px",
-                fontFamily: "JetBrains Mono",
-              }}
-            />
-            <button
-              type="submit"
-              style={{
-                background: "#FFB020",
-                border: "none",
-                padding: "5px 15px",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontWeight: "bold",
-              }}
-            >
-              ENVIAR
-            </button>
-          </form>
-        </div>
+        <VisionChat messages={messages} onSendMessage={processarComando} />
 
         <div className="argus-actions">
+          <button className="argus-refresh" onClick={() => filtrarVoos(null)}>
+            <span className="argus-btn-en">SHOW FLIGHTS</span>
+          </button>
           <button className="argus-refresh" onClick={toggleEarthquakes}>
             <span className="argus-btn-en">
               {showEarthquakes ? "HIDE QUAKES" : "SHOW QUAKES"}

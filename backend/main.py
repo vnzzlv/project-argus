@@ -20,10 +20,13 @@ from collectors.flight_enricher import enrich_flights
 
 app = FastAPI(title="PROJECT ARGUS API", version="0.1.0")
 
+# CORS TOTALMENTE LIBERADO PARA O TCC
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174"],
-    allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
+    allow_origins=["*"], 
+    allow_credentials=False, 
+    allow_methods=["*"], 
+    allow_headers=["*"],
 )
 
 # ============ CONFIGURAÇÃO DO CÉREBRO (GROQ) ============
@@ -68,19 +71,19 @@ async def satellites(grupo: str = Query("estacoes"), limit: int = Query(50)):
 async def earthquakes(periodo: str = Query("dia"), magnitude: str = Query("m25"), limit: int = Query(50)):
     return await fetch_earthquakes(periodo=periodo, magnitude=magnitude, limit=limit)
 
-# ============ O CÉREBRO DO VISION ============
+# ============ O CÉREBRO DO VISION (MODELO ATUALIZADO) ============
 @app.post("/vision/ask")
 async def vision_ask(req: VisionRequest):
     try:
         prompt = f"Contexto: {req.contexto}\n\nPergunta: {req.pergunta}"
         
-        # MODELO ATUALIZADO: llama-3.3-70b-versatile
         chat_completion = client.chat.completions.create(
             messages=[
                 {"role": "system", "content": VISION_PERSONA},
                 {"role": "user", "content": prompt}
             ],
-            model="llama-3.3-70b-versatile",
+            # MODELO CORRIGIDO: openai/gpt-oss-120b
+            model="openai/gpt-oss-120b",
             temperature=0.5,
             response_format={"type": "json_object"} 
         )
