@@ -30,13 +30,8 @@ O nome faz referência a **Argos Panoptes**, o gigante da mitologia grega com ce
 | ✈️ Voos civis         | OpenSky Network  | 🔜 Planejado |
 | 🛩️ Voos militares     | ADS-B Exchange   | 🔜 Planejado |
 | 🛰️ Satélites          | N2YO / Celestrak | 🔜 Planejado |
-| 🚢 Navios (AIS)       | AIS Hub          | 🔜 Planejado |
-| 🌊 Cabos submarinos   | TeleGeography    | 🔜 Planejado |
-| 📹 Câmeras públicas   | Windy Webcams    | 🔜 Planejado |
 | 🌋 Terremotos         | USGS             | 🔜 Planejado |
-| 🔥 Queimadas          | NASA FIRMS       | 🔜 Planejado |
-| 🚗 Trânsito           | Waze (via Apify) | 🔜 Planejado |
-| 🌐 Status da internet | Cloudflare Radar | 🔜 Planejado |
+
 
 ---
 
@@ -65,7 +60,6 @@ O nome faz referência a **Argos Panoptes**, o gigante da mitologia grega com ce
 **Infraestrutura:**
 
 - Git + GitHub
-- Pinokio (instalação 1-clique)
 
 ---
 
